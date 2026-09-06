@@ -31,6 +31,17 @@ class AndroidRuntimeTest {
         val settings = FilterSettings(disabledCategories = emptySet(), whitelist = setOf("alice"))
         assertEquals(settings, ConfigCodec.decode(ConfigCodec.encode(settings)))
     }
+
+    @Test fun autoUpdatePreferenceDefaultsOnAndCanBeDisabled() {
+        val repository = io.github.xblocker.data.Repository(InstrumentationRegistry.getInstrumentation().targetContext)
+        val original = repository.autoUpdate()
+        try {
+            repository.setAutoUpdate(true)
+            assertTrue(repository.autoUpdate())
+            repository.setAutoUpdate(false)
+            assertFalse(repository.autoUpdate())
+        } finally { repository.setAutoUpdate(original) }
+    }
     @Test fun x1216DetailsAndReplyReferencesUseAndroidJsonCorrectly() {
         val input = """{"entries":[
           {"entry_id":"tweet-1","content":{"content":{"tweet_results":{"result":{

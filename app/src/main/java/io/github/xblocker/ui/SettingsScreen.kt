@@ -80,9 +80,15 @@ internal fun LazyListScope.settingsItems(
                 startAction = { SettingsIcon(Icons.Rounded.ContactPage) }, onClick = onOpenAbout,
             )
             ArrowPreference(
-                title = "检查更新", summary = "当前 v${io.github.xblocker.BuildConfig.VERSION_NAME} · 启动时自动检查",
+                title = "检查更新", summary = "当前 v${io.github.xblocker.BuildConfig.VERSION_NAME} · ${if (state.autoUpdate) "启动时自动检查" else "仅手动检查"}",
                 startAction = { SettingsIcon(Icons.Rounded.NotificationsActive) },
                 onClick = { vm.checkForUpdates() },
+            )
+            SwitchPreference(
+                title = "启动时自动检查更新", summary = "打开应用后检查 GitHub 最新正式版",
+                startAction = { SettingsIcon(Icons.Rounded.NotificationsActive) },
+                checked = state.autoUpdate,
+                onCheckedChange = vm::setAutoUpdate,
             )
         }
     }

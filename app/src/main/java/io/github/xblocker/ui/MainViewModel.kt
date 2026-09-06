@@ -31,6 +31,7 @@ data class UiState(
     val fluidCloud: Boolean = false,
     val colorMode: Int = 0,
     val appearance: AppearanceSettings = AppearanceSettings(),
+    val autoUpdate: Boolean = true,
     val message: String = "",
 )
 
@@ -44,10 +45,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val checkingUpdate = checking.asStateFlow()
     init {
         viewModelScope.launch { while (true) { refresh(); delay(5000) } }
-        checkForUpdates(automatic = true)
+        if (repo.autoUpdate()) checkForUpdates(automatic = true)
     }
 
     fun dismissUpdate() { update.value = null }
+
+    fun setAutoUpdate(enabled: Boolean) {
+        repo.setAutoUpdate(enabled)
+        mutable.value = mutable.value.copy(autoUpdate = enabled)
+    }
 
     fun checkForUpdates(automatic: Boolean = false) {
         if (checking.value) return
@@ -75,6 +81,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 fluidCloud = repo.fluidCloud(),
                 colorMode = repo.colorMode(),
                 appearance = repo.appearance(),
+                autoUpdate = repo.autoUpdate(),
                 history = (history.length() - 1 downTo 0).map { history.getJSONObject(it) })
         }
         mutable.value = next.copy(syncing = mutable.value.syncing, message = mutable.value.message,

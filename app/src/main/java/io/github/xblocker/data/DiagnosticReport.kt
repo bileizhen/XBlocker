@@ -44,6 +44,7 @@ object DiagnosticReport {
             put("blockPromoted", state.settings.blockPromoted)
             put("cloudEnabled", state.settings.cloudEnabled)
             put("fluidCloud", state.fluidCloud)
+            put("autoUpdate", state.autoUpdate)
             put("colorMode", state.colorMode)
             put("blur", state.appearance.blur)
             put("floatingBar", state.appearance.floatingBar)
