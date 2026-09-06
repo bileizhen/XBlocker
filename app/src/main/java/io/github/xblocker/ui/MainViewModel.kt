@@ -7,7 +7,11 @@ import io.github.xblocker.core.FilterSettings
 import io.github.xblocker.core.RuleEngine
 import io.github.xblocker.core.RuleParser
 import io.github.xblocker.data.CloudSync
+import io.github.xblocker.data.AppUpdates
 import io.github.xblocker.data.Repository
+import io.github.xblocker.data.InstallResult
+import io.github.xblocker.data.UpdateDownloadState
+import io.github.xblocker.data.UpdateSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,6 +45,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val state = mutable.asStateFlow()
     private val update = MutableStateFlow<io.github.xblocker.core.AppRelease?>(null)
     val availableUpdate = update.asStateFlow()
+    private val download = MutableStateFlow<UpdateDownloadState>(UpdateDownloadState.Idle)
+    val updateDownload = download.asStateFlow()
     private val checking = MutableStateFlow(false)
     val checkingUpdate = checking.asStateFlow()
     init {
@@ -48,7 +54,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (repo.autoUpdate()) checkForUpdates(automatic = true)
     }
 
-    fun dismissUpdate() { update.value = null }
+    fun dismissUpdate() {
+        update.value = null
+        download.value = UpdateDownloadState.Idle
+    }
 
     fun setAutoUpdate(enabled: Boolean) {
         repo.setAutoUpdate(enabled)
@@ -60,14 +69,54 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         checking.value = true
         viewModelScope.launch {
             try {
-                update.value = withContext(Dispatchers.IO) { io.github.xblocker.data.AppUpdates.check() }
-                if (!automatic && update.value == null) message("当前已是最新正式版")
+                val previous = update.value
+                val next = withContext(Dispatchers.IO) { AppUpdates.check() }
+                update.value = next
+                if (next?.version != previous?.version) download.value = UpdateDownloadState.Idle
+                if (!automatic && next == null) message("当前已是最新正式版")
             } catch (cancelled: kotlinx.coroutines.CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
                 if (!automatic) message("检查更新失败，请稍后重试")
             } finally { checking.value = false }
         }
+    }
+
+    fun downloadUpdate(source: UpdateSource) {
+        val release = update.value ?: return
+        if (download.value is UpdateDownloadState.Downloading) return
+        val app = getApplication<Application>()
+        download.value = UpdateDownloadState.Downloading(source, 0L, -1L)
+        viewModelScope.launch {
+            try {
+                val file = withContext(Dispatchers.IO) {
+                    AppUpdates.download(app, release, source) { received, total ->
+                        download.value = UpdateDownloadState.Downloading(source, received, total)
+                    }
+                }
+                download.value = UpdateDownloadState.Ready(source, file)
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                download.value = UpdateDownloadState.Failed(source, error.message ?: "下载失败")
+            }
+        }
+    }
+
+    fun installDownloaded() {
+        val ready = download.value as? UpdateDownloadState.Ready ?: return
+        val app = getApplication<Application>()
+        runCatching { AppUpdates.install(app, ready.file) }
+            .onSuccess { result ->
+                when (result) {
+                    InstallResult.Started -> {
+                        message("已请求系统安装更新")
+                        dismissUpdate()
+                    }
+                    InstallResult.PermissionRequired -> message("请允许本应用安装未知应用，然后再次点击请求安装")
+                }
+            }
+            .onFailure { message("无法启动安装：${it.message ?: "请重试"}") }
     }
     private suspend fun refresh() {
         val next = withContext(Dispatchers.IO) {

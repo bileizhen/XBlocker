@@ -16,6 +16,8 @@ class ReleaseParserTest {
         val result = ReleaseParser.newerRelease(release().toString(), "0.1.0")!!
         assertEquals("0.2.0", result.version)
         assertEquals("更新说明", result.notes)
+        assertEquals("XBlocker.apk", result.assetName)
+        assertEquals("https://github.com/bileizhen/XBlocker/releases/download/v0.2.0/XBlocker.apk", result.downloadUrl)
     }
     @Test fun `versions compare numerically and do not offer downgrades`() {
         assertNotNull(ReleaseParser.newerRelease(release("v0.10.0").toString(), "0.9.0"))

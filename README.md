@@ -10,7 +10,7 @@
 - 配置传入 X 双通道：优先使用带调用 UID 检查的 ContentProvider（约 5 秒刷新）；提供者不可见时（如 APK 刚更新、URI 授权被系统清除）自动回退到 LSPosed 共享的 `XSharedPreferences`，过滤不依赖模块界面是否打开过。
 - 模块激活标记：X 进程内的 Hook 在启动完成、初始化失败或桥接不可用时，经独立于 ContentProvider 的显式广播回报“模块仍在运行”及原因（接收端校验调用 UID）。首页与“运行诊断”据此区分“未被 LSPosed 加载”与“已加载但回报通道受阻”，未连接时直接显示排障步骤。
 - “发送日志”可生成诊断 ZIP：含版本、设备、已安装 X 版本、模块激活标记、功能开关、模块统计及当前应用进程日志；不含自定义词库、白名单或拦截记录，无需 root 或存储权限。
-- 应用启动时默认检查 GitHub 最新正式版，发现新版本显示更新说明和发布页入口；可在设置中关闭自动检查，仍可手动检查更新。
+- 应用启动时默认检查 GitHub 最新正式版，发现新版本可在应用内选择 GitHub 原站或 `gh.dpik.top` 镜像下载 APK，并请求系统安装；可在设置中关闭自动检查，仍可手动检查更新。
 - 流体云实时拦截状态（ColorOS 16+）：仅当 X 位于前台时在状态栏显示胶囊，离开约 1–2 秒自动消失。提升为实时活动需要完整组合（`POST_PROMOTED_NOTIFICATIONS` + `android.requestPromotedOngoing=true` + `setShortCriticalText` + ProgressStyle 分段进度 + HIGH 渠道 + FGS + ongoing），前台状态由 Activity 生命周期回报（400ms 防抖），胶囊更新由 Provider 回报事件驱动。首次开启会依次请求通知权限和电池优化白名单。
 - 本地拦截计数、最近 200 条记录与真实进程诊断；不保存推文正文。累计计数按最近 200 条记录的条目 ID 去重。
 - 适配 X 12.19.x 实际下发的 URT 结构：推文位于 `itemContent.content.tweetResult.result`，正文在 `legacy.full_text` 或扁平字段，作者经 `core.user_result`；兼容 Web 版 `tweet_results.result` 嵌套与详情页 `conversationComponents` 线程结构。回复判定合并 `in_reply_to_status_id_str` 与 `conversation_id_str`。

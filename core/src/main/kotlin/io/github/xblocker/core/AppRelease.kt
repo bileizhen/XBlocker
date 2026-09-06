@@ -2,7 +2,13 @@ package io.github.xblocker.core
 
 import org.json.JSONObject
 
-data class AppRelease(val version: String, val notes: String, val url: String)
+data class AppRelease(
+    val version: String,
+    val notes: String,
+    val url: String,
+    val downloadUrl: String,
+    val assetName: String,
+)
 
 object ReleaseParser {
     private fun version(value: String): List<Long>? {
@@ -22,12 +28,19 @@ object ReleaseParser {
         if (release.optString("html_url") != url) return null
         // A source-only release is not an installable app update.
         val assets = release.optJSONArray("assets") ?: return null
-        if ((0 until assets.length()).none { i ->
+        val asset = (0 until assets.length()).mapNotNull { i ->
             val asset = assets.optJSONObject(i)
             val name = asset?.optString("name").orEmpty()
-            name.endsWith(".apk", ignoreCase = true) &&
+            if (name.endsWith(".apk", ignoreCase = true) &&
                 asset?.optString("browser_download_url")?.startsWith("https://github.com/bileizhen/XBlocker/releases/download/$tag/") == true
-        }) return null
-        return AppRelease(tag.removePrefix("v"), release.optString("body").take(6000), url)
+            ) asset else null
+        }.firstOrNull() ?: return null
+        return AppRelease(
+            version = tag.removePrefix("v"),
+            notes = release.optString("body").take(6000),
+            url = url,
+            downloadUrl = asset.optString("browser_download_url"),
+            assetName = asset.optString("name"),
+        )
     }
 }

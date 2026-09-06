@@ -57,6 +57,8 @@ import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import io.github.xblocker.core.RuleParser
 import io.github.xblocker.core.Tweet
+import io.github.xblocker.data.UpdateDownloadState
+import io.github.xblocker.data.UpdateSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -141,6 +143,7 @@ private fun date(time: Long): String = if (time == 0L) "尚未同步 · 使用�
 private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
     val availableUpdate by vm.availableUpdate.collectAsStateWithLifecycle()
+    val updateDownload by vm.updateDownload.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var selectedPage by rememberSaveable { mutableIntStateOf(0) }
@@ -156,6 +159,7 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
     var showRejected by rememberSaveable { mutableStateOf(false) }
     var confirmClear by remember { mutableStateOf(false) }
     var showLogDialog by rememberSaveable { mutableStateOf(false) }
+    var selectedUpdateSource by rememberSaveable { mutableStateOf(UpdateSource.GITHUB.name) }
     val pages = listOf("概览", "规则", "记录", "设置", "主题设置", "关于", "运行诊断")
     val icons = listOf(Icons.Rounded.Cottage, Icons.AutoMirrored.Rounded.Rule, Icons.Rounded.History, Icons.Rounded.Settings)
     fun openUrl(url: String) { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }.onFailure { vm.message("没有可用的应用打开此链接") } }
@@ -477,19 +481,42 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
         SendLogDialog(showLogDialog, state, onDismissRequest = { showLogDialog = false })
         SuperDialog(show = availableUpdate != null, title = "发现新版本 ${availableUpdate?.version.orEmpty()}",
             onDismissRequest = vm::dismissUpdate) {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text(availableUpdate?.notes?.ifBlank { "新版本已发布，可前往发布页查看详情并下载。" }.orEmpty(),
-                    modifier = Modifier.heightIn(max = 300.dp).verticalScroll(rememberScrollState()))
+            val selectedSource = UpdateSource.valueOf(selectedUpdateSource)
+            val downloading = updateDownload is UpdateDownloadState.Downloading
+            val sourceLocked = downloading || updateDownload is UpdateDownloadState.Ready
+            Column(Modifier.heightIn(max = 540.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Text(availableUpdate?.notes?.ifBlank { "新版本已发布，可直接在应用内下载并请求系统安装。" }.orEmpty())
+                Text("下载源", fontWeight = FontWeight.Medium)
+                SuperSwitch(title = UpdateSource.GITHUB.label, summary = "GitHub 官方发布服务器",
+                    checked = selectedSource == UpdateSource.GITHUB, enabled = !sourceLocked,
+                    onCheckedChange = { if (it) selectedUpdateSource = UpdateSource.GITHUB.name })
+                SuperSwitch(title = UpdateSource.GH_DPIK_TOP.label, summary = "网络受限时可尝试的镜像站",
+                    checked = selectedSource == UpdateSource.GH_DPIK_TOP, enabled = !sourceLocked,
+                    onCheckedChange = { if (it) selectedUpdateSource = UpdateSource.GH_DPIK_TOP.name })
+                when (val state = updateDownload) {
+                    is UpdateDownloadState.Downloading -> Text("正在从 ${state.source.label} 下载：${downloadProgress(state.received, state.total)}",
+                        color = MiuixTheme.colorScheme.primary)
+                    is UpdateDownloadState.Failed -> Text("下载失败：${state.reason}", color = MiuixTheme.colorScheme.error)
+                    is UpdateDownloadState.Ready -> Text("更新包已下载，可以请求系统安装。", color = MiuixTheme.colorScheme.primary)
+                    UpdateDownloadState.Idle -> Unit
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    TextButton("稍后", onClick = vm::dismissUpdate, modifier = Modifier.weight(1f))
-                    TextButton("前往更新", onClick = {
-                        availableUpdate?.let { openUrl(it.url) }
-                        vm.dismissUpdate()
-                    }, modifier = Modifier.weight(1f))
+                    TextButton("稍后", onClick = vm::dismissUpdate, enabled = !downloading, modifier = Modifier.weight(1f))
+                    if (updateDownload is UpdateDownloadState.Ready) {
+                        TextButton("请求安装", onClick = vm::installDownloaded, modifier = Modifier.weight(1f))
+                    } else {
+                        TextButton(if (updateDownload is UpdateDownloadState.Failed) "重试下载" else "下载更新",
+                            onClick = { vm.downloadUpdate(selectedSource) }, enabled = !downloading, modifier = Modifier.weight(1f))
+                    }
                 }
             }
         }
     }
+}
+
+private fun downloadProgress(received: Long, total: Long): String {
+    if (total > 0L) return "${(received * 100L / total).coerceIn(0L, 100L)}%"
+    return "${received / (1024L * 1024L)} MB"
 }
 
 @Composable

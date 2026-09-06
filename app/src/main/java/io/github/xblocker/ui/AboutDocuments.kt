@@ -49,7 +49,7 @@ internal fun AboutDocumentScreen(privacy: Boolean, onBack: () -> Unit) {
         ) {
             if (privacy) {
                 item { Card { BasicComponent(title = "在本地过滤", summary = "推文、昵称和用户名仅在设备上匹配规则，不上传推文、账号凭据、自定义规则或白名单。") } }
-                item { Card { BasicComponent(title = "联网用途", summary = "仅从公开的 GitHub 词库项目下载规则和检查更新，不发送推文内容。") } }
+                item { Card { BasicComponent(title = "联网用途", summary = "仅从公开的 GitHub 项目获取词库、检查版本和下载用户选择的更新包，不发送推文内容。") } }
                 item { Card { BasicComponent(title = "本地记录", summary = "保存拦截计数及最近 200 条拦截记录，不保存推文正文。可在“记录”页清空。") } }
                 item { Card { BasicComponent(title = "日志导出", summary = "仅在你选择保存或发送日志时生成诊断包，包含设备与应用版本、功能状态、模块统计和本应用进程日志。分享对象由你在系统分享面板中选择。诊断包不包含自定义词库、白名单或拦截记录。") } }
                 item { Card { BasicComponent(title = "账号操作", summary = "只隐藏命中的内容，不执行拉黑、发帖或其他账号操作。") } }
