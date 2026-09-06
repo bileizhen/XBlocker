@@ -64,6 +64,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.overlay.OverlayDialog as SuperDialog
+import top.yukonga.miuix.kmp.preference.OverlaySpinnerPreference
 import top.yukonga.miuix.kmp.theme.ColorSchemeMode
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.ThemeController
@@ -486,13 +487,19 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
             val sourceLocked = downloading || updateDownload is UpdateDownloadState.Ready
             Column(Modifier.heightIn(max = 540.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Text(availableUpdate?.notes?.ifBlank { "新版本已发布，可直接在应用内下载并请求系统安装。" }.orEmpty())
-                Text("下载源", fontWeight = FontWeight.Medium)
-                SuperSwitch(title = UpdateSource.GITHUB.label, summary = "GitHub 官方发布服务器",
-                    checked = selectedSource == UpdateSource.GITHUB, enabled = !sourceLocked,
-                    onCheckedChange = { if (it) selectedUpdateSource = UpdateSource.GITHUB.name })
-                SuperSwitch(title = UpdateSource.GH_DPIK_TOP.label, summary = "网络受限时可尝试的镜像站",
-                    checked = selectedSource == UpdateSource.GH_DPIK_TOP, enabled = !sourceLocked,
-                    onCheckedChange = { if (it) selectedUpdateSource = UpdateSource.GH_DPIK_TOP.name })
+                OverlaySpinnerPreference(
+                    title = "下载源",
+                    summary = "选择更新包下载服务器",
+                    items = listOf(
+                        DropdownItem(UpdateSource.GITHUB.label, summary = "GitHub 官方发布服务器"),
+                        DropdownItem(UpdateSource.GH_DPIK_TOP.label, summary = "网络受限时可尝试的镜像站"),
+                    ),
+                    selectedIndex = selectedSource.ordinal,
+                    enabled = !sourceLocked,
+                    onSelectedIndexChange = { index ->
+                        selectedUpdateSource = UpdateSource.entries[index].name
+                    },
+                )
                 when (val state = updateDownload) {
                     is UpdateDownloadState.Downloading -> Text("正在从 ${state.source.label} 下载：${downloadProgress(state.received, state.total)}",
                         color = MiuixTheme.colorScheme.primary)
