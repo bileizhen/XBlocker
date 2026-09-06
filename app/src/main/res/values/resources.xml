@@ -1,4 +1,5 @@
 <resources>
+    <color name="ic_launcher_background">#2878F0</color>
     <string name="app_name">XBlocker</string>
     <string-array name="xposed_scope"><item>com.twitter.android</item></string-array>
     <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">

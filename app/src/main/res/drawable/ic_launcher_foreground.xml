@@ -1,0 +1,5 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <!-- Shield + cross scaled into the 66dp adaptive-icon safe zone. -->
+    <path android:fillColor="#FFFFFF" android:pathData="M54,33L73,44L73,54C73,66 64,73 54,78C44,73 35,66 35,54L35,44Z" />
+    <path android:strokeColor="#2878F0" android:strokeWidth="4.5" android:strokeLineCap="round" android:pathData="M46,47L62,61M62,47L46,61" />
+</vector>
