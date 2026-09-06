@@ -2,6 +2,12 @@
   <img src="docs/icon-512.png" width="96" alt="XBlocker">
   <h1>XBlocker</h1>
   <p>让 X 时间线少一点噪音。</p>
+
+  [![License](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+  [![Android 9+](https://img.shields.io/badge/Android-9%2B-blue.svg)](https://www.python.org/)
+  [![LSPosed](https://img.shields.io/badge/LSPosed-legacy-orange.svg)](https://lsposed.org)
+  [![GitHub](https://img.shields.io/badge/作者-bileizhen-blue)](https://github.com/bileizhen)
+
   <p>
     <a href="https://github.com/bileizhen/XBlocker/releases/latest">下载最新版</a>
     ·
@@ -71,3 +77,11 @@ Windows 遇到 `Unable to establish loopback connection` 时，使用 `scripts/b
 XBlocker 原有代码采用 MIT；界面和部分组件移植自 [SukiSU-Ultra v4.1.3](https://github.com/SukiSU-Ultra/SukiSU-Ultra/tree/v4.1.3)，完整应用按 GPL-3.0 分发，详见 [COPYING](COPYING)。词库、Miuix、Xposed API 及其他依赖的来源和许可证见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
 XBlocker 与 X、LSPosed 及词库维护者没有隶属关系。
+
+## 浏览量
+
+<div align="center">
+  
+![:shell](https://count.getloli.com/@bileizhen_XBlocker?name=bileizhen_XBlocker&theme=original-new&padding=7&offset=0&align=center&scale=1&pixelated=1&darkmode=auto)
+
+</div>
