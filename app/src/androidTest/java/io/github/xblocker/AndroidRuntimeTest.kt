@@ -31,4 +31,18 @@ class AndroidRuntimeTest {
         val settings = FilterSettings(disabledCategories = emptySet(), whitelist = setOf("alice"))
         assertEquals(settings, ConfigCodec.decode(ConfigCodec.encode(settings)))
     }
+    @Test fun x1216DetailsAndReplyReferencesUseAndroidJsonCorrectly() {
+        val input = """{"entries":[
+          {"entry_id":"tweet-1","content":{"content":{"tweet_results":{"result":{
+            "rest_id":"1","legacy":{},"details":{"full_text":"xblocker-test"},"reply_to_results":{"rest_id":null}
+          }}}}},
+          {"entry_id":"tweet-2","content":{"content":{"tweet_results":{"result":{
+            "rest_id":"2","legacy":{},"details":{"full_text":"xblocker-test"},"reply_to_results":{"rest_id":"1"}
+          }}}}}
+        ]}"""
+        val output = TimelineFilter(RuleEngine(FilterSettings(customRules = "xblocker-test"), "")).filter(input)
+        assertTrue(output.recognized)
+        assertEquals("2", output.events.single().id)
+        assertEquals("tweet-1", JSONObject(output.json).getJSONArray("entries").getJSONObject(0).getString("entry_id"))
+    }
 }

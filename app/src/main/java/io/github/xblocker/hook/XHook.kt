@@ -13,6 +13,7 @@ import de.robv.android.xposed.XposedBridge
 import de.robv.android.xposed.XposedHelpers
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 import io.github.xblocker.core.ConfigCodec
+import io.github.xblocker.core.GraphQlResponseFilter
 import io.github.xblocker.core.ReplayInput
 import io.github.xblocker.core.RuleEngine
 import io.github.xblocker.core.TimelineFilter
@@ -95,6 +96,33 @@ class XHook : IXposedHookLoadPackage {
                 override fun onActivitySaveInstanceState(activity: android.app.Activity, outState: android.os.Bundle) {}
                 override fun onActivityDestroyed(activity: android.app.Activity) {}
             })
+            val version = context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty()
+            if (version == "12.16.3" || version.startsWith("12.16.3-")) {
+                runCatching {
+                    val responseFilter = GraphQlResponseFilter(loader, ::transform)
+                    val call = loader.loadClass("okhttp3.internal.connection.RealCall")
+                    val method = call.getDeclaredMethod("getResponseWithInterceptorChain\$okhttp")
+                    XposedBridge.hookMethod(method, object : XC_MethodHook() {
+                        override fun afterHookedMethod(p: MethodHookParam) {
+                            if (!enabled || p.hasThrowable()) return
+                            val original = p.result ?: return
+                            try { p.result = responseFilter.filter(original) }
+                            catch (e: Exception) { error = "过滤已跳过：${e.javaClass.simpleName}" }
+                        }
+                    })
+                    hooks++
+                    adapter = "okhttp3/GraphQL (X 12.16.3)"
+                }.onFailure { error = "12.16.3 数据入口初始化失败：${it.javaClass.simpleName}" }
+            } else {
+                installJackson()
+            }
+            if (hooks == 0 && error.isEmpty()) error = "未找到兼容的数据入口，需要适配此 X 版本"
+            XposedBridge.log("XBlocker: adapter=$adapter hooks=$hooks")
+            sendMarker(context, JSONObject().put("phase", "started").put("hooks", hooks).put("adapter", adapter).put("error", error))
+            bridgeExecutor.scheduleWithFixedDelay({ refreshAndReport() }, 0, 5, TimeUnit.SECONDS)
+        }
+
+        private fun installJackson() {
             val names = linkedSetOf("com.fasterxml.jackson.core.JsonFactory", "com.fasterxml.jackson.core.e")
             // Only inspect the small Jackson core namespace; do not load every application class.
             runCatching {
@@ -105,42 +133,73 @@ class XHook : IXposedHookLoadPackage {
             }
             for (name in names) {
                 val cls = XposedHelpers.findClassIfExists(name, loader) ?: continue
-                val methods = cls.declaredMethods.filter { m ->
-                    m.parameterTypes.size == 1 && m.parameterTypes[0] in setOf(InputStream::class.java, ByteArray::class.java, String::class.java, CharArray::class.java) &&
+                // All parser-construction overloads are candidates: the class itself is
+                // identified by having both the 1-arg InputStream and byte[] factories.
+                val factories = cls.declaredMethods.filter { m ->
+                    m.parameterTypes.size == 1 && m.parameterTypes[0] in setOf(InputStream::class.java, ByteArray::class.java) &&
                         m.returnType.name.startsWith("com.fasterxml.jackson.core.")
                 }
-                if (methods.none { it.parameterTypes[0] == InputStream::class.java } || methods.none { it.parameterTypes[0] == ByteArray::class.java }) continue
+                if (factories.none { it.parameterTypes[0] == InputStream::class.java } || factories.none { it.parameterTypes[0] == ByteArray::class.java }) continue
+                val textParams = setOf(InputStream::class.java, ByteArray::class.java, String::class.java, CharArray::class.java, java.io.Reader::class.java)
+                val methods = cls.declaredMethods.filter { m ->
+                    val ps = m.parameterTypes
+                    (ps.size == 1 && ps[0] in textParams || ps.size == 3 && ps[0] == ByteArray::class.java &&
+                        ps[1] == Int::class.javaPrimitiveType && ps[2] == Int::class.javaPrimitiveType) &&
+                        m.returnType.name.startsWith("com.fasterxml.jackson.core.")
+                }
                 for (method in methods) {
-                    XposedBridge.hookMethod(method, object : XC_MethodHook() {
-                        override fun beforeHookedMethod(p: MethodHookParam) {
-                            if (!enabled || (depth.get() ?: 0) > 0) return
-                            depth.set(1); p.setObjectExtra("xblocker_owned", true)
-                            try {
-                                p.args[0] = when (val input = p.args[0]) {
-                                    is InputStream -> ReplayInput.transform(input, ::transform)
-                                    is ByteArray -> if (input.size <= TimelineFilter.MAX_CHARS) {
-                                        val text = input.toString(Charsets.UTF_8)
-                                        if (text.toByteArray(Charsets.UTF_8).contentEquals(input)) transform(text).toByteArray(Charsets.UTF_8) else input
-                                    } else input
-                                    is String -> transform(input)
-                                    is CharArray -> if (input.size <= TimelineFilter.MAX_CHARS) transform(String(input)).toCharArray() else input
-                                    else -> input
-                                }
-                            } catch (e: Exception) { error = "过滤已跳过：${e.javaClass.simpleName}" }
-                        }
-                        override fun afterHookedMethod(p: MethodHookParam) {
-                            if (p.getObjectExtra("xblocker_owned") == true) depth.set(0)
-                        }
-                    })
+                    hookTextEntry(method)
                     hooks++
                 }
                 adapter = name
                 break
             }
-            if (hooks == 0) error = "未找到兼容的数据入口，需要适配此 X 版本"
-            XposedBridge.log("XBlocker: adapter=$adapter hooks=$hooks")
-            sendMarker(context, JSONObject().put("phase", "started").put("hooks", hooks).put("adapter", adapter).put("error", error))
-            bridgeExecutor.scheduleWithFixedDelay({ refreshAndReport() }, 0, 5, TimeUnit.SECONDS)
+            // Retained as a parser fallback for clients using generated LoganSquare mappers.
+            runCatching {
+                val mapper = XposedHelpers.findClassIfExists("com.bluelinelabs.logansquare.JsonMapper", loader) ?: return@runCatching
+                val overloads = mapper.declaredMethods.filter { m ->
+                    m.name in setOf("parse", "parseList") && m.parameterTypes.size == 1 &&
+                        m.parameterTypes[0] in setOf(InputStream::class.java, ByteArray::class.java, String::class.java, CharArray::class.java)
+                }
+                for (method in overloads) {
+                    hookTextEntry(method)
+                    hooks++
+                }
+                if (overloads.isNotEmpty() && adapter.isEmpty()) adapter = "com.bluelinelabs.logansquare.JsonMapper"
+            }
+        }
+
+        /** Rewrites the text payload of a hooked parse entry before the host consumes it. */
+        private fun hookTextEntry(method: java.lang.reflect.Member) {
+            XposedBridge.hookMethod(method, object : XC_MethodHook() {
+                override fun beforeHookedMethod(p: MethodHookParam) {
+                    if (!enabled || (depth.get() ?: 0) > 0) return
+                    depth.set(1); p.setObjectExtra("xblocker_owned", true)
+                    try {
+                        when (val input = p.args[0]) {
+                            is InputStream -> p.args[0] = ReplayInput.transform(input, ::transform)
+                            is ByteArray -> {
+                                val offset = (p.args.getOrNull(1) as? Int) ?: 0
+                                val length = (p.args.getOrNull(2) as? Int) ?: input.size
+                                if (length in 1..TimelineFilter.MAX_CHARS && offset >= 0 && offset + length <= input.size) {
+                                    val text = String(input, offset, length, Charsets.UTF_8)
+                                    if (text.toByteArray(Charsets.UTF_8).contentEquals(input.copyOfRange(offset, offset + length))) {
+                                        val transformed = transform(text).toByteArray(Charsets.UTF_8)
+                                        p.args[0] = transformed
+                                        if (p.args.size >= 3) { p.args[1] = 0; p.args[2] = transformed.size }
+                                    }
+                                }
+                            }
+                            is String -> p.args[0] = transform(input)
+                            is CharArray -> if (input.size <= TimelineFilter.MAX_CHARS) p.args[0] = transform(String(input)).toCharArray()
+                            else -> Unit
+                        }
+                    } catch (e: Exception) { error = "过滤已跳过：${e.javaClass.simpleName}" }
+                }
+                override fun afterHookedMethod(p: MethodHookParam) {
+                    if (p.getObjectExtra("xblocker_owned") == true) depth.set(0)
+                }
+            })
         }
 
         /** Push a foreground-state report within ~0.4s so the capsule reacts immediately. */
@@ -169,6 +228,7 @@ class XHook : IXposedHookLoadPackage {
                     .put("fg", resumed.get() > 0)
                     .put("seen", seen.get()).put("responses", responses.get()).put("filtered", filtered.get()).put("error", error)
                     .put("rules", filter?.ruleCount ?: 0).put("rejected", filter?.rejectedCount ?: 0)
+                    .put("probe", JSONArray()) // Clear diagnostics retained from research builds.
                     .put("events", JSONArray(batch))
                     .put("fp", JSONArray(stats.fingerprint.toList().sorted()))
                 stats.toMap().forEach { (key, value) -> report.put(key, value) }

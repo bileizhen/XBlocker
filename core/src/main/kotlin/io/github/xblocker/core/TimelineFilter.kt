@@ -24,7 +24,7 @@ class FilterStats {
     val fingerprint: MutableSet<String> = ConcurrentHashMap.newKeySet()
     private val fingerprintsTaken = AtomicInteger()
     fun takeFingerprint(entries: JSONArray) {
-        if (fingerprintsTaken.getAndIncrement() >= 2) return
+        if (fingerprintsTaken.getAndIncrement() >= 6) return
         for (i in 0 until minOf(entries.length(), 3)) fingerprint(entries.optJSONObject(i), "", 0)
     }
     private fun fingerprint(node: Any?, path: String, depth: Int) {
@@ -43,7 +43,7 @@ class FilterStats {
         "entriesArrays" to entriesArrays.get(), "entriesInspected" to entriesInspected.get(), "tweets" to tweets.get(),
         "texts" to texts.get(), "replies" to replies.get(), "promoted" to promoted.get(), "blocked" to blocked.get())
     companion object {
-        private val INTERESTING = Regex("(?i)(tweet|entries|entry|content|item|module|result|legacy|full_text|user|core|promoted|typename|cursor|in_reply_to|conversation)")
+        private val INTERESTING = Regex("(?i)(tweet|entries|entry|content|item|module|result|legacy|full_text|user|core|promoted|typename|cursor|reply_to|conversation|rest_id)")
     }
 }
 
@@ -69,9 +69,9 @@ class TimelineFilter(private val engine: RuleEngine, val stats: FilterStats = Fi
                             val value = node.opt(key)
                             if (value is JSONArray && key in setOf("entries", "moduleItems")) {
                                 stats.entriesArrays.incrementAndGet()
-                                if (value.length() > 0 && value.optJSONObject(0)?.has("entryId") == true) {
+                                stats.takeFingerprint(value)
+                                if ((0 until value.length()).any { i -> value.optJSONObject(i)?.let { it.has("entryId") || it.has("entry_id") } == true }) {
                                     recognized = true
-                                    stats.takeFingerprint(value)
                                 }
                                 filterEntries(value, events)
                             } else if (key !in setOf("quoted_status_result", "retweeted_status_result", "user_results", "tweet_results")) visit(value, depth + 1)
@@ -99,7 +99,8 @@ class TimelineFilter(private val engine: RuleEngine, val stats: FilterStats = Fi
             }
             val item = content.optJSONObject("itemContent") ?: content
             // Cursors and non-tweet recommendations must remain intact.
-            if (item.has("cursorType") || entry.optString("entryId").startsWith("cursor-")) continue
+            val entryId = entry.optString("entryId").ifBlank { entry.optString("entry_id") }
+            if (item.has("cursorType") || item.has("cursor_type") || entryId.startsWith("cursor-")) continue
             val container = findTweetContainer(item, 0)
             val result = container?.let { it.optJSONObject("tweetResult") ?: it.optJSONObject("tweet_results") }?.optJSONObject("result")
             val tweet = result?.let(::readTweet)
@@ -109,6 +110,7 @@ class TimelineFilter(private val engine: RuleEngine, val stats: FilterStats = Fi
                 if (tweet.isReply) stats.replies.incrementAndGet()
             }
             val promoted = container?.optJSONObject("promotedMetadata") != null || container?.optJSONObject("tweetPromotedMetadata") != null ||
+                container?.optJSONObject("promoted_metadata") != null ||
                 item.optJSONObject("promotedMetadata") != null || content.optJSONObject("promotedMetadata") != null ||
                 item.optJSONObject("promoted_metadata") != null ||
                 result?.optJSONObject("promoted_content") != null || result?.optJSONObject("legacy")?.optJSONObject("promoted_content") != null
@@ -117,7 +119,7 @@ class TimelineFilter(private val engine: RuleEngine, val stats: FilterStats = Fi
             if (hit != null) {
                 stats.blocked.incrementAndGet()
                 entries.remove(i)
-                events += BlockEvent(tweet?.id ?: entry.optString("entryId"), tweet?.handle.orEmpty(), hit.reason, hit.rule, hit.category)
+                events += BlockEvent(tweet?.id?.takeIf { it.isNotBlank() } ?: entryId, tweet?.handle.orEmpty(), hit.reason, hit.rule, hit.category)
             }
         }
     }
@@ -146,19 +148,23 @@ class TimelineFilter(private val engine: RuleEngine, val stats: FilterStats = Fi
 
     private fun readTweet(result: JSONObject): Tweet? {
         val tweet = if (result.optString("__typename") == "TweetWithVisibilityResults") result.optJSONObject("tweet") ?: return null else result
-        // Web nests status fields under "legacy"; Android URT serves them on the result itself.
-        val body = tweet.optJSONObject("legacy") ?: tweet
+        // 12.16.3's new client moves text/reply metadata to details while retaining legacy.
+        val bodies = listOfNotNull(tweet.optJSONObject("details"), tweet.optJSONObject("legacy"), tweet)
+        fun statusField(key: String): String = bodies.asSequence().mapNotNull { it.opt(key) }
+            .filter { it != JSONObject.NULL }.map { it.toString() }.firstOrNull { it.isNotBlank() }.orEmpty()
         val text = tweet.optJSONObject("note_tweet")?.optJSONObject("note_tweet_results")?.optJSONObject("result")?.optString("text")
-            ?.takeIf { it.isNotBlank() } ?: body.optString("full_text").ifBlank { body.optString("text") }
+            ?.takeIf { it.isNotBlank() } ?: statusField("full_text").ifBlank { statusField("text") }
         // The Android payload names the link "user_result", the web payload "user_results".
         val user = tweet.optJSONObject("core")?.let { it.optJSONObject("user_results") ?: it.optJSONObject("user_result") }?.optJSONObject("result")
         val userLegacy = user?.optJSONObject("legacy")
         val userCore = user?.optJSONObject("core")
-        val replyId = body.opt("in_reply_to_status_id_str")
-        val id = tweet.optString("rest_id").ifBlank { body.optString("id_str").ifBlank { body.optString("id") } }
-        val explicitReply = replyId != null && replyId != JSONObject.NULL && replyId.toString().isNotBlank() && replyId.toString() != "0"
+        val replyId = statusField("in_reply_to_status_id_str")
+        val replyReference = tweet.optJSONObject("reply_to_results")?.opt("rest_id")
+            ?.takeIf { it != JSONObject.NULL }?.toString().orEmpty()
+        val id = statusField("rest_id").ifBlank { statusField("id_str").ifBlank { statusField("id") } }
+        val explicitReply = listOf(replyId, replyReference).any { it.isNotBlank() && it != "0" }
         // Thread roots carry conversation_id_str equal to their own id; replies carry the root's.
-        val conversationId = body.optString("conversation_id_str")
+        val conversationId = statusField("conversation_id_str")
         val threadReply = conversationId.isNotBlank() && id.isNotBlank() && conversationId != id
         return Tweet(id, text,
             userCore?.optString("name")?.takeIf { it.isNotEmpty() } ?: userLegacy?.optString("name").orEmpty(),
