@@ -13,14 +13,15 @@
 - 流体云实时拦截状态（ColorOS 16+）：仅当 X 位于前台时在状态栏显示胶囊，离开约 1–2 秒自动消失。提升为实时活动需要完整组合（`POST_PROMOTED_NOTIFICATIONS` + `android.requestPromotedOngoing=true` + `setShortCriticalText` + ProgressStyle 分段进度 + HIGH 渠道 + FGS + ongoing），前台状态由 Activity 生命周期回报（400ms 防抖），胶囊更新由 Provider 回报事件驱动。首次开启会依次请求通知权限和电池优化白名单。
 - 本地拦截计数、最近 200 条记录与真实进程诊断；不保存推文正文。累计计数按最近 200 条记录的条目 ID 去重。
 - 适配 X 12.19.x 实际下发的 URT 结构：推文位于 `itemContent.content.tweetResult.result`，正文在 `legacy.full_text` 或扁平字段，作者经 `core.user_result`；兼容 Web 版 `tweet_results.result` 嵌套与详情页 `conversationComponents` 线程结构。回复判定合并 `in_reply_to_status_id_str` 与 `conversation_id_str`。
-- 适配 **X 12.16.3-release.0** 的新客户端路径：在 OkHttp 解压完成后的 GraphQL 响应入口过滤，支持 `entry_id`、`details.full_text`、`reply_to_results.rest_id` 和嵌套的 `promoted_metadata`。回复模块按子条目过滤，保留正常回复、主帖及分页游标。
+- 适配 **X 12.16.3-release.0 / 12.23.1-prod.01** 的新客户端路径：在 OkHttp 解压完成后的 GraphQL 响应入口过滤，支持 `entry_id`、`details.full_text`、`reply_to_results.rest_id` 和嵌套的 `promoted_metadata`。回复模块按子条目过滤，保留正常回复、主帖及分页游标。
 - 界面移植自 **SukiSU Ultra v4.1.3**（首页状态/计数卡、折叠大标题、悬浮底栏的真实背景采样与折射、关于页渐变、设置分组、保存/分享弹窗）；主题设置支持跟随系统/浅色/深色、Monet（12+）、模糊与液态玻璃（13+）、预测性返回（14+）及 80%–110% 全局缩放。来源与许可证见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
 ## 兼容性
 
 - Android 最低 9（API 28）。使用传统 Xposed API，框架必须保留 legacy 模块支持。
-- 已适配：**X 12.16.3-release.0、12.19.1-release.0 / Android 16 / LSPosed 2.2.0 (7854)**。12.16.3 使用独立网络入口，12.19.1 保留 Jackson 入口；其他版本需观察诊断计数，不能仅以模块启用作为兼容证明。12.16.3 的字段差异与真机验证见 [适配记录](docs/x-12.16.3.md)。
-- **X 12.23.1 起客户端整体重构**（Jackson 与 OkHttp 移除、时间线改走二进制协议），文本级数据入口不复存在，暂不支持；模块在未适配版本上安全降级，诊断页显示“未找到兼容的数据入口”。分析过程与后续方案见 `.research/x1223-analysis.md`。
+- 网络过滤方案已在 **X 12.16.3-release.0、12.23.1-prod.01 / Android 16 / LSPosed 2.2.0 (7854)** 上验证；12.19.1 曾通过 Jackson 入口验证，本轮未重新装机测试。
+- **按能力选择入口，不按版本号放行**：优先检测并安装 OkHttp GraphQL 入口，接口缺失或安装失败时回退 Jackson / LoganSquare。过滤只修改已识别的时间线结构；其他版本仍需观察正文、回复及拦截计数，不能仅以 Hook 注册成功作为兼容证明。见 [多版本适配说明](docs/multiversion-support.md) 和 [12.16.3 字段记录](docs/x-12.16.3.md)。
+- 12.23.1 保留 OkHttp，实测 GraphQL 时间线仍为 JSON。此前“时间线必定为二进制、无法文本过滤”的结论已撤回；旧解析器未命中不能证明响应协议类型。
 - LSPosed 2.2.0 模块页会因使用 New XSharedPreferences 显示“已废弃功能”警告：判定为 legacy + `xposedsharedprefs` + others 可读 xml 三者同时命中，属预告性质，当前功能正常。**不要**按提示改成 `xposedminversion=82` 并删除声明——那会使 `MODE_WORLD_READABLE` 直接抛异常并失去回退通道。共享路径的可读位由框架 daemon 强制设为 744，与调用侧 mode 无关，因此本模块使用 `MODE_PRIVATE`；2.3.0 移除 nsp 后 provider 主通道不受影响。
 
 ## 安装和启用
@@ -35,11 +36,11 @@
 
 ## 范围与限制
 
-- 仅处理已识别的 GraphQL 时间线 `entries` / `moduleItems`：12.19.1 从 Jackson 入口接入，12.16.3 从 OkHttp 响应入口接入。不处理浏览器网页版、私信或已落盘的旧缓存（更新模块后建议下拉刷新或重启 X）。未识别的数据原样透传。
+- 仅处理已识别的 GraphQL 时间线 `entries` / `moduleItems`：优先从 OkHttp 响应入口接入，接口不可用时使用旧解析入口。不处理浏览器网页版、私信或已落盘的旧缓存（更新模块后建议下拉刷新或重启 X）。未识别的数据原样透传。
 - 部分 OEM（如 ColorOS）会在 APK 更新后短暂保留提供者不可见状态；此期间自动走 `XSharedPreferences` 回退，功能不受影响，仅界面统计暂停刷新。
 - 保留 cursor、非推文条目、未知字段。对 conversation module 只删除命中的子条目，空模块才整体删除；不因引用推文命中而删除外层推文。
 - 数据格式不兼容、解析失败、输入超过 8 MiB 时透传原始数据；读取输入流失败时回放已消费前缀。
-- 12.16.3 仅检查 X API 域名的成功 GraphQL JSON 响应，通过有上限的 `peekBody` 读取副本；超限、未解压或无效 UTF-8 响应保留原始响应体。发生过滤时重新生成响应体并移除旧 Content-Length，不修改磁盘缓存。
+- 网络入口仅检查 X API 域名的成功 GraphQL JSON 响应，通过有上限的 `peekBody` 读取副本；超限、未解压或无效 UTF-8 响应保留原始响应体。发生过滤时重新生成响应体并移除旧 Content-Length，不修改磁盘缓存。
 - 正则有每条推文共享的字符访问预算与时间检查，达到限制时跳过耗时匹配；超长正文最多检查 32,768 字符。
 - 云端“仇恨用语”分类默认关闭，可自行打开；词库会有误判，建议通过分类开关和白名单调整。
 - 不会自动拉黑账号、修改账号设置或发送任何内容。所有规则在本地匹配，网络只用于获取公开词库。

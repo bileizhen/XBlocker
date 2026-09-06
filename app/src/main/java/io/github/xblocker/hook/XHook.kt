@@ -44,7 +44,6 @@ private fun sendMarker(context: Context, payload: JSONObject) {
 class XHook : IXposedHookLoadPackage {
     override fun handleLoadPackage(param: XC_LoadPackage.LoadPackageParam) {
         if (param.packageName != "com.twitter.android" || param.processName != param.packageName) return
-        // 12.23.1 research probe, disabled for daily builds: install(param.classLoader)
         XposedHelpers.findAndHookMethod(Application::class.java, "attach", Context::class.java, object : XC_MethodHook() {
             override fun afterHookedMethod(p: MethodHookParam) {
                 val context = p.args[0] as Context
@@ -96,30 +95,34 @@ class XHook : IXposedHookLoadPackage {
                 override fun onActivitySaveInstanceState(activity: android.app.Activity, outState: android.os.Bundle) {}
                 override fun onActivityDestroyed(activity: android.app.Activity) {}
             })
-            val version = context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty()
-            if (version == "12.16.3" || version.startsWith("12.16.3-")) {
-                runCatching {
-                    val responseFilter = GraphQlResponseFilter(loader, ::transform)
-                    val call = loader.loadClass("okhttp3.internal.connection.RealCall")
-                    val method = call.getDeclaredMethod("getResponseWithInterceptorChain\$okhttp")
-                    XposedBridge.hookMethod(method, object : XC_MethodHook() {
-                        override fun afterHookedMethod(p: MethodHookParam) {
-                            if (!enabled || p.hasThrowable()) return
-                            val original = p.result ?: return
-                            try { p.result = responseFilter.filter(original) }
-                            catch (e: Exception) { error = "过滤已跳过：${e.javaClass.simpleName}" }
-                        }
-                    })
-                    hooks++
-                    adapter = "okhttp3/GraphQL (X 12.16.3)"
-                }.onFailure { error = "12.16.3 数据入口初始化失败：${it.javaClass.simpleName}" }
-            } else {
-                installJackson()
+            // Select by available host APIs; version numbers do not describe the active
+            // client stack (some releases contain both the old and new implementations).
+            if (runCatching { installNetwork() }.isFailure) {
+                runCatching { installJackson() }.onFailure {
+                    error = "数据入口初始化失败：${it.javaClass.simpleName}"
+                }
             }
             if (hooks == 0 && error.isEmpty()) error = "未找到兼容的数据入口，需要适配此 X 版本"
             XposedBridge.log("XBlocker: adapter=$adapter hooks=$hooks")
             sendMarker(context, JSONObject().put("phase", "started").put("hooks", hooks).put("adapter", adapter).put("error", error))
             bridgeExecutor.scheduleWithFixedDelay({ refreshAndReport() }, 0, 5, TimeUnit.SECONDS)
+        }
+
+        private fun installNetwork() {
+            val responseFilter = GraphQlResponseFilter(loader, ::transform)
+            val call = loader.loadClass("okhttp3.internal.connection.RealCall")
+            val method = call.getDeclaredMethod("getResponseWithInterceptorChain\$okhttp")
+            check(method.returnType == loader.loadClass("okhttp3.Response"))
+            XposedBridge.hookMethod(method, object : XC_MethodHook() {
+                override fun afterHookedMethod(p: MethodHookParam) {
+                    if (!enabled || p.hasThrowable()) return
+                    val original = p.result ?: return
+                    try { p.result = responseFilter.filter(original) }
+                    catch (e: Exception) { error = "过滤已跳过：${e.javaClass.simpleName}" }
+                }
+            })
+            hooks++
+            adapter = "okhttp3/GraphQL"
         }
 
         private fun installJackson() {

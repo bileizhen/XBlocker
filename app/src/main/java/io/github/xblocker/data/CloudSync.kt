@@ -30,7 +30,7 @@ object CloudSync {
                 try {
                     connection = URI(url).toURL().openConnection() as HttpURLConnection
                     connection.connectTimeout = 15_000; connection.readTimeout = 15_000
-                    connection.setRequestProperty("User-Agent", "XBlocker/0.1.0")
+                    connection.setRequestProperty("User-Agent", "XBlocker/${io.github.xblocker.BuildConfig.VERSION_NAME}")
                     connection.setRequestProperty("Accept", "application/vnd.github.raw+json")
                     if (url == API && repo.etag().isNotBlank()) connection.setRequestProperty("If-None-Match", repo.etag())
                     val status = connection.responseCode

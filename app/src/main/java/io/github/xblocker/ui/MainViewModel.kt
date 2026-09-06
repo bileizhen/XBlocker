@@ -38,7 +38,31 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = Repository(app)
     private val mutable = MutableStateFlow(UiState())
     val state = mutable.asStateFlow()
-    init { viewModelScope.launch { while (true) { refresh(); delay(5000) } } }
+    private val update = MutableStateFlow<io.github.xblocker.core.AppRelease?>(null)
+    val availableUpdate = update.asStateFlow()
+    private val checking = MutableStateFlow(false)
+    val checkingUpdate = checking.asStateFlow()
+    init {
+        viewModelScope.launch { while (true) { refresh(); delay(5000) } }
+        checkForUpdates(automatic = true)
+    }
+
+    fun dismissUpdate() { update.value = null }
+
+    fun checkForUpdates(automatic: Boolean = false) {
+        if (checking.value) return
+        checking.value = true
+        viewModelScope.launch {
+            try {
+                update.value = withContext(Dispatchers.IO) { io.github.xblocker.data.AppUpdates.check() }
+                if (!automatic && update.value == null) message("当前已是最新正式版")
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                if (!automatic) message("检查更新失败，请稍后重试")
+            } finally { checking.value = false }
+        }
+    }
     private suspend fun refresh() {
         val next = withContext(Dispatchers.IO) {
             val settings = repo.settings(); val cloud = repo.cloud()

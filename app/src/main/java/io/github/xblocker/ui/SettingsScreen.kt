@@ -79,6 +79,11 @@ internal fun LazyListScope.settingsItems(
                 title = "关于",
                 startAction = { SettingsIcon(Icons.Rounded.ContactPage) }, onClick = onOpenAbout,
             )
+            ArrowPreference(
+                title = "检查更新", summary = "当前 v${io.github.xblocker.BuildConfig.VERSION_NAME} · 启动时自动检查",
+                startAction = { SettingsIcon(Icons.Rounded.NotificationsActive) },
+                onClick = { vm.checkForUpdates() },
+            )
         }
     }
 }

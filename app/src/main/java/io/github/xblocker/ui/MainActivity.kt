@@ -140,6 +140,7 @@ private fun date(time: Long): String = if (time == 0L) "尚未同步 · 使用�
 @Composable
 private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val availableUpdate by vm.availableUpdate.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var selectedPage by rememberSaveable { mutableIntStateOf(0) }
@@ -445,7 +446,7 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
         NavigationBackHandler(
             state = rememberNavigationEventState(NavigationEventInfo.None),
             isBackEnabled = backStack.size > 1 && !usePredictiveBack &&
-                editor.isEmpty() && !preview && !showRejected && !confirmClear && !showLogDialog,
+                editor.isEmpty() && !preview && !showRejected && !confirmClear && !showLogDialog && availableUpdate == null,
             onBackCompleted = ::navigateBack,
         )
         // Keep overlays outside the entries: a transition must not mount each
@@ -474,6 +475,20 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
         }
         PreviewDialog(preview, state, onDismiss = { preview = false })
         SendLogDialog(showLogDialog, state, onDismissRequest = { showLogDialog = false })
+        SuperDialog(show = availableUpdate != null, title = "发现新版本 ${availableUpdate?.version.orEmpty()}",
+            onDismissRequest = vm::dismissUpdate) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text(availableUpdate?.notes?.ifBlank { "新版本已发布，可前往发布页查看详情并下载。" }.orEmpty(),
+                    modifier = Modifier.heightIn(max = 300.dp).verticalScroll(rememberScrollState()))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    TextButton("稍后", onClick = vm::dismissUpdate, modifier = Modifier.weight(1f))
+                    TextButton("前往更新", onClick = {
+                        availableUpdate?.let { openUrl(it.url) }
+                        vm.dismissUpdate()
+                    }, modifier = Modifier.weight(1f))
+                }
+            }
+        }
     }
 }
 
