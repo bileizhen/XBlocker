@@ -312,7 +312,7 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
                         if (state.syncError.isNotBlank()) item { Notice(state.syncError) }
                     }
                     1 -> {
-                        item { SmallTitle("云端词库") }
+                        item { SmallTitle("云端词库", insideMargin = sectionTitleMargin) }
                         item {
                             Card {
                                 SuperSwitch(title = "使用云端规则", summary = "amahteru / x-comment-blocker", checked = state.settings.cloudEnabled, onCheckedChange = { value -> vm.update { it.copy(cloudEnabled = value) } })
@@ -333,7 +333,7 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
                         if (state.engine.rejected.isNotEmpty()) item {
                             Card { BasicComponent(title = "${state.engine.rejected.size} 条规则未启用", summary = "查看当前不兼容的正则规则", onClick = { showRejected = true }) }
                         }
-                        item { SmallTitle("我的规则") }
+                        item { SmallTitle("我的规则", insideMargin = sectionTitleMargin) }
                         item {
                             Card {
                                 BasicComponent(title = "自定义词库", summary = "${RuleParser.parse(state.settings.customRules).size} 条 · 每行一个词或 /正则/i", onClick = { edit("自定义词库") }, endActions = { Text("编辑 ›") })
@@ -349,7 +349,7 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
                     }
                     2 -> {
                         item { Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                            SmallTitle("最近 ${state.history.size} 条 / 最多 200 条")
+                            SmallTitle("最近 ${state.history.size} 条 / 最多 200 条", insideMargin = sectionTitleMargin)
                             TextButton("清空", onClick = { confirmClear = true }, enabled = state.history.isNotEmpty())
                         } }
                         if (state.history.isEmpty()) item {
@@ -525,6 +525,8 @@ private fun downloadProgress(received: Long, total: Long): String {
     if (total > 0L) return "${(received * 100L / total).coerceIn(0L, 100L)}%"
     return "${received / (1024L * 1024L)} MB"
 }
+
+private val sectionTitleMargin = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
 
 @Composable
 private fun PreviewDialog(show: Boolean, state: UiState, onDismiss: () -> Unit) {
