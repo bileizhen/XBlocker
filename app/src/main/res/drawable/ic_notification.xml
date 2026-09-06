@@ -1,0 +1,11 @@
+<!-- Monochrome alpha-only glyph for status bar / fluid cloud rendering -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF" android:strokeWidth="1.8" android:strokeLineJoin="round"
+        android:pathData="M12,2.5 L19.5,5.4 L19.5,11 C19.5,15.9 16.2,19.8 12,21.5 C7.8,19.8 4.5,15.9 4.5,11 L4.5,5.4 Z" />
+    <path android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF" android:strokeWidth="1.8" android:strokeLineCap="round"
+        android:pathData="M9,9 L15,15 M15,9 L9,15" />
+</vector>

@@ -1,0 +1,24 @@
+// Adapted from SukiSU-Ultra v4.1.3 AboutUiState.kt, GPL-3.0.
+package io.github.xblocker.ui
+
+import androidx.compose.runtime.Immutable
+import io.github.xblocker.BuildConfig
+import io.github.xblocker.data.CloudSync
+
+@Immutable
+data class AboutLink(val fullText: String, val url: String)
+
+@Immutable
+data class AboutUiState(
+    val title: String = "关于",
+    val appName: String = "XBlocker",
+    val versionName: String = "v${BuildConfig.VERSION_NAME}",
+    val links: List<AboutLink> = listOf(
+        AboutLink("在 GitHub 查看词库源码", CloudSync.SOURCE),
+        AboutLink("开源许可", "xblocker:licenses"),
+        AboutLink("隐私说明", "xblocker:privacy"),
+    ),
+)
+
+@Immutable
+data class AboutScreenActions(val onBack: () -> Unit, val onOpenLink: (String) -> Unit)

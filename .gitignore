@@ -1,0 +1,20 @@
+# Gradle
+.gradle/
+build/
+
+# IDE
+.idea/
+*.iml
+captures/
+
+# Local machine config
+local.properties
+
+# Dev/research artifacts (large APKs, reversed sources, probe dumps)
+artifacts/
+.research/*
+!.research/x1223-analysis.md
+
+# OS
+.DS_Store
+Thumbs.db

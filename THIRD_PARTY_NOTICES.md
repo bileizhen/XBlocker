@@ -1,0 +1,22 @@
+# Third-party notices
+
+- Cloud dictionary: [amahteru/x-comment-blocker](https://github.com/amahteru/x-comment-blocker), MIT. The bundled `keywords.txt` is an offline snapshot downloaded on 2026-09-06. Its original license is included in `app/src/main/assets/UPSTREAM-LICENSE.txt`. Category and `/pattern/flags` conventions follow that project. Cloud refresh reads the same repository's `keywords.txt`.
+- Miuix UI / blur 0.9.3: [compose-miuix-ui/miuix](https://github.com/compose-miuix-ui/miuix), Apache-2.0. Used as Compose dependencies.
+- Xposed API 82: [rovo89/XposedBridge](https://github.com/rovo89/XposedBridge), compile-only API supplied at runtime by LSPosed. It is not packaged in the APK.
+- AndroidX/Jetpack and Kotlin are used under their respective Apache-2.0 licenses.
+- Twenty-one Material Icons 1.7.8 vector source files are vendored from the official `androidx.compose.material:material-icons-extended-android:1.7.8:sources` artifact under `app/src/main/java/androidx/compose/material/icons/`. Their original Android Open Source Project copyright/Apache-2.0 notices are preserved. Only the icons used by the UI are included, avoiding the entire extended icon library in the APK.
+- JSON-java is used only by the JVM core/test environment. The APK uses Android's built-in `org.json`.
+
+XBlocker is an independent project and is not affiliated with X, LSPosed, or the dictionary maintainers.
+
+## UI source port (2026-09-06)
+
+- [SukiSU-Ultra v4.1.3](https://github.com/SukiSU-Ultra/SukiSU-Ultra/tree/v4.1.3), commit `0ca744a`, GPL-3.0: the manager's `ui/component/FloatingBottomBar.kt`, `ui/component/liquid/*.kt`, `ui/component/miuix/animation/{DampedDragAnimation,InteractiveHighlight}.kt`, `ui/component/miuix/modifier/DragGestureInspector.kt`, and `ui/util/BlurExt.kt` are ported under `app/src/main/java/io/github/xblocker/ui/`. `OverviewStatus.kt` adapts `HomeMiuix.kt`'s status/metric cards; `AppearanceScreen.kt` and `ThemePreview.kt` adapt `ColorPaletteScreenMiuix.kt`'s preview, grouped options and scale controls.
+- About/settings: `AboutScreen.kt` and `AboutUiState.kt` port `AboutMiuix.kt` and `AboutUiState.kt`; `SettingsScreen.kt` adapts `SettingsMiuix.kt`. The seven `ui/component/miuix/effect/*.kt` background helpers are ported with Miuix 0.9.3 shader imports and API guards. XBlocker uses its own shield mark, version, local privacy/license pages and real dictionary/UI source links; no SukiSU artwork is included.
+- Log export: `SendLogDialog.kt` adapts SukiSU's dialog, Save/Share actions, document picker and FileProvider workflow. `DiagnosticReport.kt` replaces its root/kernel report collector with an XBlocker ZIP containing app/device status, module diagnostics and app-process logcat.
+- Navigation: `MainActivity.kt` adapts SukiSU's Navigation 3 back stack / `NavDisplay` integration. Gesture seeking, cancellation and transitions use `miuix-navigation3-ui-android:0.9.3` (Apache-2.0); XBlocker retains its predictive-back preference and system back behavior on main tabs.
+- Changes: XBlocker packages and real filtering state/actions; independent blur/glass controls; selected-tab state stability; Miuix 0.9.3 import migration; Android API guards and a plain floating bar below API 33; theme colors resolved from the user's selected mode; preview aspect-ratio bounds. The app uses its own name and no SukiSU brand/logo assets.
+- The floating bar and liquid helpers identify their origins as the [Miuix examples](https://github.com/compose-miuix-ui/miuix) and [Kyant0/AndroidLiquidGlass](https://github.com/Kyant0/AndroidLiquidGlass), Apache-2.0. Original source notices remain in those files. SukiSU-specific adaptations are included under the upstream project's GPL-3.0 terms.
+- [LSPosed/LSPosed](https://github.com/LSPosed/LSPosed), commit `df74d83eb03a44cc6ad268841ac2ada28d077c77`, was cloned and inspected. Its public `HomeFragment.java` / `fragment_home.xml` are the older View UI, not the Compose theme UI in the supplied LSPosed 2.2.0 screenshots. No old View manager code is linked into XBlocker; that screenshot is the visual reference and the matching Compose implementation comes from SukiSU.
+
+License texts are bundled in `app/src/main/assets/licenses/`. XBlocker's original code retains its MIT notice in `LICENSE`. The combined application incorporating the GPL-covered SukiSU UI must be distributed under GPL-3.0, with its corresponding source, build files, and these notices. The original MIT notice does not replace the terms of the imported code. See `COPYING` for the combined distribution license.
