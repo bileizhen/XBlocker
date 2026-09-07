@@ -25,7 +25,7 @@ object FluidStatus {
     fun ensureChannels(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
         manager.createNotificationChannel(NotificationChannel(CAPSULE_CHANNEL, "实时拦截状态", NotificationManager.IMPORTANCE_HIGH).apply {
-            description = "使用 X 时在状态栏流体云中显示本轮拦截进度"
+            description = "使用 X 时在超级岛、流体云或通知栏显示本轮拦截进度"
             setShowBadge(false)
             setSound(null, null)
             enableVibration(false)
@@ -59,8 +59,9 @@ object FluidStatus {
             // Red = removed spam share, green = kept tweets share. The promotion request
             // extras key mirrors NotificationCompat's setRequestPromotedOngoing;
             // shortCriticalText feeds the capsule form.
-            val spam = maxOf(1L, blocked).toInt()
-            val kept = maxOf(1L, tweets - blocked).toInt()
+            // Bound both segments so their sum cannot overflow Android's Int progress range.
+            val spam = blocked.coerceIn(1L, Int.MAX_VALUE.toLong() / 2).toInt()
+            val kept = (tweets - blocked).coerceIn(1L, Int.MAX_VALUE.toLong() / 2).toInt()
             builder.addExtras(Bundle().apply { putBoolean("android.requestPromotedOngoing", true) })
                 .setStyle(Notification.ProgressStyle()
                     .setProgressSegments(listOf(
@@ -70,8 +71,10 @@ object FluidStatus {
                     .setStyledByProgress(true))
                 .setShortCriticalText(chipText)
         } else {
-            builder.setProgress(maxOf(100, tweets).toInt(), blocked.toInt(), false)
+            builder.setProgress(maxOf(100, tweets).coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+                blocked.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(), false)
         }
+        XiaomiFocusNotification.apply(context, builder, icon, blocked, tweets)
         manager.notify(CAPSULE_ID, builder.build())
     }
 }

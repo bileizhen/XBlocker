@@ -37,7 +37,7 @@ class FluidCloudService : Service() {
         val manager = getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(
             NotificationChannel(FOREGROUND_CHANNEL, "拦截监控", NotificationManager.IMPORTANCE_MIN).apply {
-                description = "保持过滤监控运行；仅在 X 前台时显示流体云"
+                description = "保持过滤监控运行；仅在 X 前台时显示超级岛或流体云"
                 setShowBadge(false)
                 setSound(null, null)
                 enableVibration(false)

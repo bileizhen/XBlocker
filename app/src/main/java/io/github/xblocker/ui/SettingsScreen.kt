@@ -27,6 +27,16 @@ internal fun LazyListScope.settingsItems(
 ) {
     item {
         Card {
+            SwitchPreference(
+                title = "启动时自动检查更新", summary = "打开应用后检查 GitHub 最新正式版",
+                startAction = { SettingsIcon(Icons.Rounded.NotificationsActive) },
+                checked = state.autoUpdate,
+                onCheckedChange = vm::setAutoUpdate,
+            )
+        }
+    }
+    item {
+        Card {
             ArrowPreference(
                 title = "主题设置", summary = "主题、颜色与界面效果",
                 startAction = { SettingsIcon(Icons.Rounded.Palette) }, onClick = onOpenTheme,
@@ -58,8 +68,8 @@ internal fun LazyListScope.settingsItems(
     item {
         Card {
             SwitchPreference(
-                title = "流体云实时显示拦截",
-                summary = "X 前台时显示拦截进度。ColorOS 16+ 使用胶囊，其他系统使用进度通知",
+                title = "实时拦截状态",
+                summary = "X 前台时显示拦截进度，支持小米超级岛与流体云；需系统支持并允许焦点通知，否则显示普通通知",
                 startAction = { SettingsIcon(Icons.Rounded.NotificationsActive) },
                 checked = state.fluidCloud, onCheckedChange = onToggleFluidCloud,
             )
@@ -83,12 +93,6 @@ internal fun LazyListScope.settingsItems(
                 title = "检查更新", summary = "当前 v${io.github.xblocker.BuildConfig.VERSION_NAME} · ${if (state.autoUpdate) "启动时自动检查" else "仅手动检查"}",
                 startAction = { SettingsIcon(Icons.Rounded.NotificationsActive) },
                 onClick = { vm.checkForUpdates() },
-            )
-            SwitchPreference(
-                title = "启动时自动检查更新", summary = "打开应用后检查 GitHub 最新正式版",
-                startAction = { SettingsIcon(Icons.Rounded.NotificationsActive) },
-                checked = state.autoUpdate,
-                onCheckedChange = vm::setAutoUpdate,
             )
         }
     }

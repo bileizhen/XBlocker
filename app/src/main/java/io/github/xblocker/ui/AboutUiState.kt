@@ -14,7 +14,8 @@ data class AboutUiState(
     val appName: String = "XBlocker",
     val versionName: String = "v${BuildConfig.VERSION_NAME}",
     val links: List<AboutLink> = listOf(
-        AboutLink("在 GitHub 查看词库源码", CloudSync.SOURCE),
+        AboutLink("GitHub", "https://github.com/bileizhen/xblocker"),
+        AboutLink("QQ交流群", "https://qm.qq.com/q/ngMDU5QcFM"),
         AboutLink("开源许可", "xblocker:licenses"),
         AboutLink("隐私说明", "xblocker:privacy"),
     ),

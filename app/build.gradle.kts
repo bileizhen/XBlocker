@@ -10,9 +10,15 @@ android {
         applicationId = "io.github.xblocker"
         minSdk = 28
         targetSdk = 36
-        versionCode = 4
-        versionName = "0.2.2"
+        versionCode = 5
+        versionName = "0.2.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Supplied by Xiaomi after the app's Super Island service is enabled.
+        resValue("string", "xiaomi_app_id", providers.gradleProperty("xiaomiAppId").orElse("").get())
+        manifestPlaceholders["xiaomiDebug"] = "false"
+    }
+    buildTypes {
+        getByName("debug") { manifestPlaceholders["xiaomiDebug"] = "true" }
     }
     buildFeatures { compose = true; buildConfig = true }
     compileOptions {
@@ -36,6 +42,8 @@ dependencies {
     implementation("top.yukonga.miuix.kmp:miuix-squircle-android:0.9.3")
     implementation("androidx.work:work-runtime-ktx:2.10.5")
     compileOnly("de.robv.android.xposed:api:82")
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20250517")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
     androidTestImplementation("androidx.test:runner:1.7.0")
 }
