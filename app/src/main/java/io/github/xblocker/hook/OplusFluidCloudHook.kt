@@ -11,6 +11,7 @@ import de.robv.android.xposed.XposedHelpers
 import java.lang.reflect.Method
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Small, package-scoped compatibility hooks for ColorOS Fluid Cloud.
@@ -24,6 +25,11 @@ internal object OplusFluidCloudHook {
     private const val TAG = "XBlocker.FluidCloud"
     private const val MODULE_PACKAGE = "io.github.bileizhen.xblocker"
     private const val ASSISTANT_PERMISSION = "com.oplus.permission.safe.ASSISTANT"
+    /** Holds frontBlackList and sibling RUS lists; obfuscated single-letter name per build. */
+    private const val SEEDLING_STATE_CLASS = "com.oplus.systemui.plugins.seedling.state.g"
+    /** frontBlackList on current ColorOS builds: entries are exempt from the front-app filter. */
+    private const val SEEDLING_FRONT_LIST_FIELD = "b"
+    private const val FRONT_EXEMPT_PACKAGE = "com.twitter.android"
 
     val TARGET_PACKAGES: Set<String> = setOf(
         "com.android.systemui",
@@ -33,10 +39,14 @@ internal object OplusFluidCloudHook {
     )
 
     private val hookedMethods = Collections.newSetFromMap(ConcurrentHashMap<Method, Boolean>())
+    private val frontExemptionInstalled = AtomicBoolean(false)
 
     fun install(packageName: String, classLoader: ClassLoader) {
         when (packageName) {
-            "com.android.systemui", "com.oplus.systemui.plugins" -> hookMediaWhitelist(classLoader)
+            "com.android.systemui", "com.oplus.systemui.plugins" -> {
+                hookMediaWhitelist(classLoader)
+                hookFrontExemption()
+            }
             "com.oplus.pantanal.ums", "com.coloros.assistantscreen" -> hookAssistantPermission(classLoader)
         }
     }
@@ -90,5 +100,54 @@ internal object OplusFluidCloudHook {
                     }
                 })
             }
+    }
+
+    /**
+     * ColorOS's AppFrontInterceptor marks a live alert as "front" when the posting package is
+     * the foreground app and is absent from the seedling state's frontBlackList; the card
+     * repository then drops it "due to front app" as soon as the expanded card collapses.
+     * Our capsule is posted by X itself, so without an exemption it is invisible exactly
+     * while the user is inside X. The seedling classes live in a plugin classloader inside
+     * the SystemUI process, so wait for the state class to load, then keep X present in the
+     * exemption list, re-applying after every config reload.
+     */
+    private fun hookFrontExemption() {
+        if (!frontExemptionInstalled.compareAndSet(false, true)) return
+        runCatching {
+            XposedHelpers.findAndHookMethod(
+                ClassLoader::class.java, "loadClass",
+                String::class.java, Boolean::class.javaPrimitiveType,
+                object : XC_MethodHook() {
+                    override fun afterHookedMethod(param: MethodHookParam) {
+                        if (param.args[0] != SEEDLING_STATE_CLASS) return
+                        (param.result as? Class<*>)?.let(::hookStateReload)
+                    }
+                },
+            )
+        }.onFailure { XposedBridge.log("$TAG: front exemption hook failed: ${it.javaClass.simpleName}") }
+    }
+
+    private fun hookStateReload(clazz: Class<*>) {
+        val initializers = clazz.declaredMethods.filter {
+            it.parameterTypes.contentEquals(arrayOf(Context::class.java)) && it.returnType == Void.TYPE
+        }
+        for (method in initializers) {
+            if (!hookedMethods.add(method)) continue
+            XposedBridge.hookMethod(method, object : XC_MethodHook() {
+                override fun afterHookedMethod(param: MethodHookParam) = exemptFrontPackage(clazz, param.thisObject)
+            })
+        }
+        XposedBridge.log("$TAG: watching seedling front exemption list (${initializers.size} reload methods)")
+    }
+
+    private fun exemptFrontPackage(clazz: Class<*>, instance: Any) {
+        runCatching {
+            val field = clazz.getDeclaredField(SEEDLING_FRONT_LIST_FIELD)
+            field.isAccessible = true
+            val current = field.get(instance) as? Array<String?>
+            if (current != null && FRONT_EXEMPT_PACKAGE in current) return
+            field.set(instance, (current?.toList() ?: emptyList()).plus(FRONT_EXEMPT_PACKAGE).toTypedArray())
+            XposedBridge.log("$TAG: exempted $FRONT_EXEMPT_PACKAGE from the front-app capsule filter")
+        }.onFailure { XposedBridge.log("$TAG: front exemption update failed: ${it.javaClass.simpleName}: ${it.message?.take(120)}") }
     }
 }

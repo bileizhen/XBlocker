@@ -262,6 +262,13 @@ class XHook : IXposedHookLoadPackage {
                     prefsFallbackLogged = true
                     XposedBridge.log("XBlocker: prefs fallback active (rules=${filter?.ruleCount ?: 0})")
                 }
+                // Some ColorOS builds refuse to restart our provider after its task is
+                // dismissed. Keep the live notification owned by X and refresh it from the
+                // last known configuration while the filter process remains alive.
+                val fallbackReport = JSONObject().put("fg", resumed.get() > 0)
+                    .put("lastSeen", System.currentTimeMillis())
+                stats.toMap().forEach { (key, value) -> fallbackReport.put(key, value) }
+                publishStatus(fallbackReport)
                 val now = System.currentTimeMillis()
                 if (now - lastBridgeLog > 60_000) {
                     lastBridgeLog = now

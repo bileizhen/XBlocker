@@ -9,7 +9,6 @@ import android.content.Intent
 import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.Bundle
-import io.github.xblocker.R
 import io.github.xblocker.ui.MainActivity
 
 /**
@@ -50,7 +49,6 @@ object FluidStatus {
         }
         // The chip only fits a handful of characters; the full ratio lives on the card.
         val chipText = "已拦$blocked"
-        val icon = R.drawable.ic_notification
         val builder = Notification.Builder(context, CAPSULE_CHANNEL)
             .setSmallIcon(notificationIcon(context))
             .setContentTitle("XBlocker")
@@ -84,11 +82,7 @@ object FluidStatus {
         }.isSuccess
     }
 
-    private fun notificationIcon(context: Context): Icon = runCatching {
-        val module = if (context.packageName == MODULE_PACKAGE) context
-        else context.createPackageContext(MODULE_PACKAGE, Context.CONTEXT_IGNORE_SECURITY)
-        Icon.createWithResource(module, R.drawable.ic_notification)
-    }.getOrElse { Icon.createWithResource(context, android.R.drawable.stat_notify_error) }
+    private fun notificationIcon(context: Context): Icon = ModuleIcon.notification(context)
 
     private fun contentIntent(context: Context): PendingIntent = PendingIntent.getActivity(
         context, CAPSULE_ID,

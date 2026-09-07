@@ -12,6 +12,9 @@ class XBlockerApp : Application() {
             getSystemService(android.app.NotificationManager::class.java)
                 ?.deleteNotificationChannel("fluid_status_foreground")
         }
+        // Make the LSPosed-shared configuration readable from X after an OEM kills the
+        // provider process when the XBlocker task is dismissed.
+        runCatching { io.github.xblocker.data.Repository(this) }
         // Also re-issued by GrantReceiver after APK updates clear the persisted grant.
         BridgeVisibility.grant(this)
         CloudSync.schedule(this)

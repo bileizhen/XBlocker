@@ -7,7 +7,6 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.graphics.drawable.Icon
-import io.github.xblocker.R
 import io.github.xblocker.ui.MainActivity
 
 /**
@@ -43,7 +42,6 @@ object FocusStatus {
             manager.cancel(NOTIFICATION_ID)
             return true
         }
-        val icon = R.drawable.ic_notification
         val builder = Notification.Builder(context, CHANNEL_ID)
             .setSmallIcon(notificationIcon(context))
             .setContentTitle("XBlocker")
@@ -54,13 +52,9 @@ object FocusStatus {
             .setCategory(Notification.CATEGORY_PROGRESS)
             .setContentIntent(PendingIntent.getActivity(context, NOTIFICATION_ID,
                 Intent().setClassName(MODULE_PACKAGE, MainActivity::class.java.name), PendingIntent.FLAG_IMMUTABLE))
-        XiaomiFocusNotification.apply(context, builder, icon, blocked, tweets)
+        XiaomiFocusNotification.apply(context, builder, blocked, tweets)
         return runCatching { manager.notify(NOTIFICATION_ID, builder.build()) }.isSuccess
     }
 
-    private fun notificationIcon(context: Context): Icon = runCatching {
-        val module = if (context.packageName == MODULE_PACKAGE) context
-        else context.createPackageContext(MODULE_PACKAGE, Context.CONTEXT_IGNORE_SECURITY)
-        Icon.createWithResource(module, R.drawable.ic_notification)
-    }.getOrElse { Icon.createWithResource(context, android.R.drawable.stat_notify_error) }
+    private fun notificationIcon(context: Context): Icon = ModuleIcon.notification(context)
 }
