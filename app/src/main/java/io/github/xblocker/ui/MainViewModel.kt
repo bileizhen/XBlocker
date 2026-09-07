@@ -38,6 +38,7 @@ data class UiState(
     val colorMode: Int = 0,
     val appearance: AppearanceSettings = AppearanceSettings(),
     val autoUpdate: Boolean = true,
+    val updateChannel: Int = 0,
     val message: String = "",
 )
 
@@ -109,13 +110,22 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         mutable.value = mutable.value.copy(autoUpdate = enabled)
     }
 
+    fun setUpdateChannel(channel: Int) {
+        if (channel == mutable.value.updateChannel) return
+        repo.setUpdateChannel(channel)
+        mutable.value = mutable.value.copy(updateChannel = channel)
+        // Reflect the new channel immediately so switching to pre-release offers the RC.
+        checkForUpdates()
+    }
+
     fun checkForUpdates(automatic: Boolean = false) {
         if (checking.value) return
         checking.value = true
         viewModelScope.launch {
             try {
+                val channel = io.github.xblocker.data.UpdateChannel.entries[repo.updateChannel()]
                 val previous = update.value
-                val next = withContext(Dispatchers.IO) { AppUpdates.check() }
+                val next = withContext(Dispatchers.IO) { AppUpdates.check(channel) }
                 update.value = next
                 if (next?.version != previous?.version) download.value = UpdateDownloadState.Idle
                 if (!automatic && next == null) message("当前已是最新正式版")
@@ -177,6 +187,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 colorMode = repo.colorMode(),
                 appearance = repo.appearance(),
                 autoUpdate = repo.autoUpdate(),
+                updateChannel = repo.updateChannel(),
                 history = (history.length() - 1 downTo 0).map { history.getJSONObject(it) })
         }
         mutable.value = next.copy(syncing = mutable.value.syncing, message = mutable.value.message,

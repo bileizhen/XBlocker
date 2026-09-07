@@ -20,6 +20,12 @@ enum class UpdateSource(val label: String, private val prefix: String = "") {
     fun url(release: AppRelease): String = prefix + release.downloadUrl
 }
 
+/** 0 = stable releases only, 1 = include pre-releases. Persisted as "updateChannel". */
+enum class UpdateChannel(val label: String) {
+    STABLE("正式版"),
+    PRERELEASE("预发布"),
+}
+
 sealed interface UpdateDownloadState {
     data object Idle : UpdateDownloadState
     data class Downloading(val source: UpdateSource, val received: Long, val total: Long) : UpdateDownloadState
@@ -32,8 +38,13 @@ enum class InstallResult { Started, PermissionRequired }
 object AppUpdates {
     private const val MAX_APK_BYTES = 128L * 1024L * 1024L
 
-    fun check(): AppRelease? {
-        val connection = URI("https://api.github.com/repos/bileizhen/XBlocker/releases/latest").toURL().openConnection() as HttpURLConnection
+    fun check(channel: UpdateChannel = UpdateChannel.STABLE): AppRelease? {
+        // "latest" never returns pre-releases; the pre-release channel lists recent releases
+        // and lets the parser pick the newest installable one, stable or pre-release.
+        val endpoint = if (channel == UpdateChannel.PRERELEASE)
+            "https://api.github.com/repos/bileizhen/XBlocker/releases?per_page=5"
+        else "https://api.github.com/repos/bileizhen/XBlocker/releases/latest"
+        val connection = URI(endpoint).toURL().openConnection() as HttpURLConnection
         try {
             connection.connectTimeout = 10_000
             connection.readTimeout = 10_000
@@ -52,7 +63,9 @@ object AppUpdates {
                 output.toByteArray()
             }
             check(bytes.size <= 256 * 1024) { "更新信息过大" }
-            return ReleaseParser.newerRelease(bytes.toString(Charsets.UTF_8), BuildConfig.VERSION_NAME)
+            val text = bytes.toString(Charsets.UTF_8)
+            return if (channel == UpdateChannel.PRERELEASE) ReleaseParser.newestRelease(text, BuildConfig.VERSION_NAME)
+            else ReleaseParser.newerRelease(text, BuildConfig.VERSION_NAME)
         } finally { connection.disconnect() }
     }
 

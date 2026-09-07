@@ -108,6 +108,9 @@ class Repository(context: Context) {
     fun setFocusNotification(enabled: Boolean) { check(prefs.edit().putBoolean("focusNotification", enabled).commit()); makeSharedPrefsReadable() }
     fun autoUpdate(): Boolean = prefs.getBoolean("autoUpdate", true)
     fun setAutoUpdate(enabled: Boolean) { check(prefs.edit().putBoolean("autoUpdate", enabled).commit()); makeSharedPrefsReadable() }
+    /** Update channel: 0 = stable only, 1 = include pre-releases. */
+    fun updateChannel(): Int = prefs.getInt("updateChannel", 0).coerceIn(0, 1)
+    fun setUpdateChannel(channel: Int) { check(prefs.edit().putInt("updateChannel", channel.coerceIn(0, 1)).commit()); makeSharedPrefsReadable() }
     /** SuKIsu-style color mode: 0 system, 1 light, 2 dark, 3-5 the Monet variants. */
     fun colorMode(): Int = prefs.getInt("colorMode", 0)
     fun setColorMode(mode: Int) { check(prefs.edit().putInt("colorMode", mode).commit()); makeSharedPrefsReadable() }

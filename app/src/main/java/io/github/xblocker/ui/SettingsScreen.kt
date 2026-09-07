@@ -12,8 +12,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.DropdownItem
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.preference.ArrowPreference
+import top.yukonga.miuix.kmp.preference.OverlaySpinnerPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -30,10 +32,21 @@ internal fun LazyListScope.settingsItems(
     item {
         Card {
             SwitchPreference(
-                title = "启动时自动检查更新", summary = "打开应用后检查 GitHub 最新正式版",
+                title = "启动时自动检查更新", summary = "打开应用后检查 GitHub 最新发布",
                 startAction = { SettingsIcon(Icons.Filled.Update) },
                 checked = state.autoUpdate,
                 onCheckedChange = vm::setAutoUpdate,
+            )
+            OverlaySpinnerPreference(
+                title = "更新渠道",
+                summary = "接收的版本类型",
+                startAction = { SettingsIcon(Icons.Rounded.RocketLaunch) },
+                items = listOf(
+                    DropdownItem("正式版", summary = "仅接收稳定发布"),
+                    DropdownItem("预发布", summary = "提前获取 rc 测试版本"),
+                ),
+                selectedIndex = state.updateChannel,
+                onSelectedIndexChange = vm::setUpdateChannel,
             )
         }
     }

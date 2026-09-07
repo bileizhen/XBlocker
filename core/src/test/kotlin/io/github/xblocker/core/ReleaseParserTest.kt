@@ -45,4 +45,39 @@ class ReleaseParserTest {
     @Test fun `release notes are bounded`() {
         assertEquals(6000, ReleaseParser.newerRelease(release().put("body", "a".repeat(9000)).toString(), "0.1.0")!!.notes.length)
     }
+
+    private fun list(vararg jsons: JSONObject) = JSONArray().also { array -> jsons.forEach { array.put(it) } }.toString()
+
+    @Test fun `pre-release channel offers rc but not equal or older`() {
+        val rc = release("v0.2.6-rc.1").put("prerelease", true)
+        assertEquals("0.2.6-rc.1", ReleaseParser.newestRelease(list(rc, release("v0.2.5")), "0.2.5")!!.version)
+        assertNull(ReleaseParser.newestRelease(list(rc, release("v0.2.5")), "0.2.6-rc.1"))
+        assertNull(ReleaseParser.newestRelease(list(rc, release("v0.2.5")), "0.2.6"))
+    }
+    @Test fun `pre-release suffix ordering follows semver subset`() {
+        assertEquals("0.2.6-rc.2", ReleaseParser.newestRelease(
+            list(release("v0.2.6-rc.1").put("prerelease", true), release("v0.2.6-rc.2").put("prerelease", true)), "0.2.5")!!.version)
+        // A final release outranks any rc of the same numbers.
+        assertEquals("0.2.6", ReleaseParser.newestRelease(
+            list(release("v0.2.6-rc.2").put("prerelease", true), release("v0.2.6")), "0.2.6-rc.1")!!.version)
+        // rc outranks beta of the same numbers.
+        assertEquals("0.2.6-rc.1", ReleaseParser.newestRelease(
+            list(release("v0.2.6-beta.3").put("prerelease", true), release("v0.2.6-rc.1").put("prerelease", true)), "0.2.5")!!.version)
+        // A beta is not an update for an rc user, and the same rc is not either.
+        assertNull(ReleaseParser.newestRelease(
+            list(release("v0.2.6-beta.2").put("prerelease", true)), "0.2.6-rc.1"))
+    }
+    @Test fun `stable channel still ignores pre-releases`() {
+        assertNull(ReleaseParser.newerRelease(release("v0.2.6-rc.1").put("prerelease", true).toString(), "0.2.5"))
+    }
+    @Test fun `list parser skips drafts and unparseable newest entries`() {
+        assertEquals("0.2.5", ReleaseParser.newestRelease(
+            list(release("v0.9.9").put("draft", true), release("v0.2.5")), "0.2.4")!!.version)
+        assertEquals("0.2.5", ReleaseParser.newestRelease(
+            list(JSONObject().put("tag_name", "latest"), release("v0.2.5")), "0.2.4")!!.version)
+        assertNull(ReleaseParser.newestRelease(list(JSONObject()), "0.2.4"))
+    }
+    @Test fun `unknown pre-release suffixes are rejected`() {
+        assertNull(ReleaseParser.newestRelease(list(release("v0.2.6-dev.1")), "0.2.5"))
+    }
 }
