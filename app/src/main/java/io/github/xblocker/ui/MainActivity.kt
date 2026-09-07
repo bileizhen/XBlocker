@@ -79,7 +79,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val repo = runCatching { io.github.xblocker.data.Repository(this) }
-        runCatching { if (repo.getOrNull()?.fluidCloud() == true) io.github.xblocker.fluid.FluidCloudService.start(this) }
         // Read the color mode synchronously once so the first frame already matches.
         val initialColorMode = runCatching { repo.getOrNull()?.colorMode() ?: 0 }.getOrDefault(0)
         val systemDark = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
@@ -165,25 +164,14 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
     val icons = listOf(Icons.Rounded.Cottage, Icons.AutoMirrored.Rounded.Rule, Icons.Rounded.History, Icons.Rounded.Settings)
     fun openUrl(url: String) { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }.onFailure { vm.message("没有可用的应用打开此链接") } }
     fun edit(kind: String) { editor = kind; editorText = if (kind == "白名单") state.settings.whitelist.joinToString("\n") else state.settings.customRules }
-    // ColorOS freezes background services of battery-optimized apps, which would leave a
-    // stale capsule on screen; the exemption dialog keeps the monitor alive.
-    fun requestBatteryExemption() {
-        if (Build.VERSION.SDK_INT < 23) return
-        val power = context.getSystemService(android.os.PowerManager::class.java) ?: return
-        if (power.isIgnoringBatteryOptimizations(context.packageName)) return
-        runCatching {
-            context.startActivity(Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
-                Uri.parse("package:${context.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-        }
-    }
     val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) { vm.setFluidCloud(true); requestBatteryExemption() } else vm.message("需要通知权限才能显示实时拦截状态")
+        if (granted) vm.setFluidCloud(true) else vm.message("需要通知权限才能显示实时拦截状态")
     }
     fun toggleFluidCloud(on: Boolean) {
         if (!on) { vm.setFluidCloud(false); return }
         if (Build.VERSION.SDK_INT >= 33 && !NotificationManagerCompat.from(context).areNotificationsEnabled())
             notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-        else { vm.setFluidCloud(true); requestBatteryExemption() }
+        else vm.setFluidCloud(true)
     }
     val import = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {

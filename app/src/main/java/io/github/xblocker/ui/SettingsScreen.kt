@@ -70,7 +70,7 @@ internal fun LazyListScope.settingsItems(
         Card {
             SwitchPreference(
                 title = "实时拦截状态",
-                summary = "X 前台时显示拦截进度，支持小米超级岛与流体云；需系统支持并允许焦点通知，否则显示普通通知",
+                summary = "使用 X 时显示拦截进度，无需保留 XBlocker 后台卡片；支持小米超级岛与流体云，需系统通知权限",
                 startAction = { SettingsIcon(Icons.Rounded.NotificationsActive) },
                 checked = state.fluidCloud, onCheckedChange = onToggleFluidCloud,
             )

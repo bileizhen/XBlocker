@@ -14,10 +14,12 @@ import io.github.xblocker.ui.MainActivity
 /**
  * Posts/cancels the fluid-cloud capsule notification from whatever context just received
  * diagnostics. X's bridge reports arrive as binder calls into this process, so the system
- * guarantees CPU here even when OEM throttling suspends our polling loops.
+ * can start the provider process on demand; no foreground service or app task is needed.
+ * Android owns the timeout so a dead reporting process cannot leave a stale capsule.
  */
 object FluidStatus {
     const val CAPSULE_ID = 42
+    const val REPORT_TIMEOUT_MS = 12_000L
     private const val CAPSULE_CHANNEL = "fluid_status_promoted"
     private const val SPAM_COLOR = 0xFFE5484D.toInt()
     private const val KEPT_COLOR = 0xFF46A759.toInt()
@@ -36,7 +38,8 @@ object FluidStatus {
     fun onDiagnostics(context: Context, json: org.json.JSONObject) {
         val blocked = json.optLong("blocked").coerceAtLeast(0)
         val tweets = maxOf(json.optLong("tweets"), blocked)
-        val fresh = System.currentTimeMillis() - json.optLong("lastSeen") < 12_000
+        val age = System.currentTimeMillis() - json.optLong("lastSeen")
+        val fresh = age >= 0 && age < REPORT_TIMEOUT_MS
         val inX = fresh && json.optBoolean("fg", false)
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
         if (!inX) {
@@ -52,6 +55,7 @@ object FluidStatus {
             .setContentText("本轮已拦截 $blocked / $tweets 条")
             .setOngoing(true)
             .setOnlyAlertOnce(true)
+            .setTimeoutAfter(REPORT_TIMEOUT_MS - age)
             .setCategory(Notification.CATEGORY_PROGRESS)
             .setContentIntent(PendingIntent.getActivity(context, 0,
                 Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE))

@@ -24,12 +24,17 @@ class ModuleProvider : ContentProvider() {
                 val payload = extras?.getString("json").orEmpty()
                 require(payload.length <= 150_000)
                 repository.report(JSONObject(payload))
-                // X's binder call guarantees us CPU right now; update the capsule here so
-                // visibility reacts even when OEM throttling suspends the service loop.
-                runCatching {
-                    if (repository.fluidCloud()) io.github.xblocker.fluid.FluidStatus.ensureChannels(ctx)
-                        .let { io.github.xblocker.fluid.FluidStatus.onDiagnostics(ctx, repository.diagnostics()) }
-                    else ctx.getSystemService(android.app.NotificationManager::class.java)?.cancel(io.github.xblocker.fluid.FluidStatus.CAPSULE_ID)
+                // Caller was validated above. Publish as the module, not the incoming
+                // X Binder identity; no background service is needed for this call.
+                val identity = Binder.clearCallingIdentity()
+                try {
+                    runCatching {
+                        if (repository.fluidCloud()) io.github.xblocker.fluid.FluidStatus.ensureChannels(ctx)
+                            .let { io.github.xblocker.fluid.FluidStatus.onDiagnostics(ctx, repository.diagnostics()) }
+                        else ctx.getSystemService(android.app.NotificationManager::class.java)?.cancel(io.github.xblocker.fluid.FluidStatus.CAPSULE_ID)
+                    }.onFailure { android.util.Log.w("XBlocker.Fluid", "Report notification failed", it) }
+                } finally {
+                    Binder.restoreCallingIdentity(identity)
                 }
                 Bundle.EMPTY
             }

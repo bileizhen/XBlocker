@@ -1,7 +1,13 @@
 <resources>
     <color name="ic_launcher_background">#2878F0</color>
     <string name="app_name">XBlocker</string>
-    <string-array name="xposed_scope"><item>com.twitter.android</item></string-array>
+    <string-array name="xposed_scope">
+        <item>com.twitter.android</item>
+        <item>com.android.systemui</item>
+        <item>com.oplus.systemui.plugins</item>
+        <item>com.oplus.pantanal.ums</item>
+        <item>com.coloros.assistantscreen</item>
+    </string-array>
     <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:windowLightStatusBar">true</item>

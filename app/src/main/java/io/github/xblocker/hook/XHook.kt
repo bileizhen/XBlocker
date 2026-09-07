@@ -43,6 +43,18 @@ private fun sendMarker(context: Context, payload: JSONObject) {
 
 class XHook : IXposedHookLoadPackage {
     override fun handleLoadPackage(param: XC_LoadPackage.LoadPackageParam) {
+        if (param.packageName in OplusFluidCloudHook.TARGET_PACKAGES) {
+            runCatching { OplusFluidCloudHook.install(param.packageName, param.classLoader) }
+                .onFailure {
+                    XposedBridge.log("XBlocker.FluidCloud: initialization failed: ${it.javaClass.simpleName}")
+                }
+        }
+        if (param.packageName == "com.android.systemui" && param.processName == param.packageName) {
+            runCatching { XiaomiFocusHook.install(param.classLoader) }.onFailure {
+                XposedBridge.log("XBlocker.Focus: initialization failed: ${it.javaClass.simpleName}")
+            }
+            return
+        }
         if (param.packageName != "com.twitter.android" || param.processName != param.packageName) return
         XposedHelpers.findAndHookMethod(Application::class.java, "attach", Context::class.java, object : XC_MethodHook() {
             override fun afterHookedMethod(p: MethodHookParam) {
