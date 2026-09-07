@@ -5,6 +5,7 @@ package io.github.xblocker.ui
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -29,7 +30,7 @@ internal fun LazyListScope.settingsItems(
         Card {
             SwitchPreference(
                 title = "启动时自动检查更新", summary = "打开应用后检查 GitHub 最新正式版",
-                startAction = { SettingsIcon(Icons.Rounded.NotificationsActive) },
+                startAction = { SettingsIcon(Icons.Filled.Update) },
                 checked = state.autoUpdate,
                 onCheckedChange = vm::setAutoUpdate,
             )

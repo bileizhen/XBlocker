@@ -31,19 +31,19 @@ def tap(x, y):
     time.sleep(0.6)
 
 
-run("shell", "am", "force-stop", "io.github.xblocker")
-run("shell", "am", "start", "-W", "-n", "io.github.xblocker/.ui.MainActivity")
+run("shell", "am", "force-stop", "io.github.bileizhen.xblocker")
+run("shell", "am", "start", "-W", "-n", "io.github.bileizhen.xblocker/.ui.MainActivity")
 time.sleep(1.0)
 tap(1037, 2656)  # settings tab
 tap(300, 600)    # theme settings row
 
-run("shell", "dumpsys", "gfxinfo", "io.github.xblocker", "reset")
+run("shell", "dumpsys", "gfxinfo", "io.github.bileizhen.xblocker", "reset")
 subprocess.run(
     ADB + ["shell", "input", "swipe", "1", "1300", "800", "1300", "2400"],
     stdout=subprocess.DEVNULL,
 )
 time.sleep(0.8)
-raw = run("shell", "dumpsys", "gfxinfo", "io.github.xblocker").decode()
+raw = run("shell", "dumpsys", "gfxinfo", "io.github.bileizhen.xblocker").decode()
 (OUT / f"{args.label}-jank.txt").write_text(raw, encoding="utf-8")
 
 

@@ -95,7 +95,7 @@ class FluidCloudService : Service() {
         private const val TAG = "XBlocker.Fluid"
         private const val FOREGROUND_CHANNEL = "fluid_status_foreground"
         private const val FOREGROUND_ID = 43
-        private const val ACTION_STOP = "io.github.xblocker.fluid.STOP"
+        private const val ACTION_STOP = "io.github.bileizhen.xblocker.fluid.STOP"
         fun start(context: Context) = context.startForegroundService(Intent(context, FluidCloudService::class.java))
         fun stop(context: Context) = context.startService(Intent(context, FluidCloudService::class.java).setAction(ACTION_STOP))
     }

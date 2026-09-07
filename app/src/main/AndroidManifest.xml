@@ -34,14 +34,14 @@
         </receiver>
         <receiver android:name=".data.MarkerReceiver" android:exported="true">
             <intent-filter>
-                <action android:name="io.github.xblocker.MARKER" />
+                <action android:name="io.github.bileizhen.xblocker.MARKER" />
             </intent-filter>
         </receiver>
         <service android:name=".fluid.FluidCloudService" android:exported="false" android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Shows the ongoing content-filter block counter in the status bar / fluid cloud" />
         </service>
-        <provider android:name=".data.ModuleProvider" android:authorities="io.github.xblocker.bridge"
+        <provider android:name=".data.ModuleProvider" android:authorities="io.github.bileizhen.xblocker.bridge"
             android:exported="true" android:grantUriPermissions="true" />
         <provider android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

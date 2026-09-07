@@ -5,7 +5,7 @@ import sys
 import time
 
 result = subprocess.run(
-    ["adb", "shell", "run-as", "io.github.xblocker", "cat", "files/bridge-status.json"],
+    ["adb", "shell", "run-as", "io.github.bileizhen.xblocker", "cat", "files/bridge-status.json"],
     capture_output=True, text=True, encoding="utf-8", errors="replace",
 )
 try:

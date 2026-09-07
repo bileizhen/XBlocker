@@ -27,8 +27,8 @@ def has_text(t):
     return f'text="{t}"' in run("shell", "cat", "/data/local/tmp/x.xml").stdout.decode(errors="ignore")
 
 
-shell("am", "force-stop", "io.github.xblocker")
-shell("am", "start", "-W", "-n", "io.github.xblocker/.ui.MainActivity")
+shell("am", "force-stop", "io.github.bileizhen.xblocker")
+shell("am", "start", "-W", "-n", "io.github.bileizhen.xblocker/.ui.MainActivity")
 time.sleep(2.0)
 for _ in range(4):
     shell("input", "tap", "1037", "2656")

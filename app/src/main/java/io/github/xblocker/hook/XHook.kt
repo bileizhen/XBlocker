@@ -30,8 +30,8 @@ import java.util.concurrent.atomic.AtomicLong
  * independent of the provider bridge, so the app can tell "never loaded by the
  * framework" apart from "loaded but the bridge is unreachable".
  */
-private const val MARKER_ACTION = "io.github.xblocker.MARKER"
-private const val MODULE_PACKAGE = "io.github.xblocker"
+private const val MARKER_ACTION = "io.github.bileizhen.xblocker.MARKER"
+private const val MODULE_PACKAGE = "io.github.bileizhen.xblocker"
 
 private fun sendMarker(context: Context, payload: JSONObject) {
     runCatching {
@@ -58,7 +58,7 @@ class XHook : IXposedHookLoadPackage {
     }
 
     private class Runtime(private val context: Context, private val app: Application, private val loader: ClassLoader) {
-        private val bridge = Uri.parse("content://io.github.xblocker.bridge")
+        private val bridge = Uri.parse("content://io.github.bileizhen.xblocker.bridge")
         private val queue = ConcurrentLinkedQueue<JSONObject>()
         private val responses = AtomicLong()
         private val seen = AtomicLong()
@@ -269,7 +269,7 @@ class XHook : IXposedHookLoadPackage {
 
         /** Rebuilds the snapshot JSON directly from the module's shared prefs file. */
         private fun prefsSnapshot(): String? = runCatching {
-            val prefs = de.robv.android.xposed.XSharedPreferences("io.github.xblocker", "xblocker")
+            val prefs = de.robv.android.xposed.XSharedPreferences("io.github.bileizhen.xblocker", "xblocker")
             // Absent "settings" means the app runs on defaults; "{}" decodes to the same.
             val settings = prefs.getString("settings", null) ?: "{}"
             val cloud = prefs.getString("cloud", null)

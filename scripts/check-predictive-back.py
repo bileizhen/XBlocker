@@ -16,9 +16,9 @@ def shot(name):
 def check_screen(text):
     run("shell","uiautomator","dump","/data/local/tmp/xblocker-test.xml")
     xml=run("shell","cat","/data/local/tmp/xblocker-test.xml").decode()
-    assert 'package="io.github.xblocker"' in xml and ('text="'+text+'"') in xml, "Unexpected foreground page; device was being used"
-run("shell","am","force-stop","io.github.xblocker")
-run("shell","am","start","-W","-n","io.github.xblocker/.ui.MainActivity");time.sleep(1.8)
+    assert 'package="io.github.bileizhen.xblocker"' in xml and ('text="'+text+'"') in xml, "Unexpected foreground page; device was being used"
+run("shell","am","force-stop","io.github.bileizhen.xblocker")
+run("shell","am","start","-W","-n","io.github.bileizhen.xblocker/.ui.MainActivity");time.sleep(1.8)
 def tap_until(x,y,text,tries=4):
     for _ in range(tries):
         tap(x,y)

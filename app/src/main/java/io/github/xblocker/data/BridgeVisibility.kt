@@ -5,7 +5,7 @@ import android.content.Intent
 import android.net.Uri
 
 object BridgeVisibility {
-    private const val AUTHORITY = "io.github.xblocker.bridge"
+    private const val AUTHORITY = "io.github.bileizhen.xblocker.bridge"
     /**
      * A persisted URI grant is what makes the provider resolvable from X on this
      * device; Android clears it whenever this APK is updated, so every entry point

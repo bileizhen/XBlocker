@@ -4,7 +4,7 @@
 - Miuix UI / blur 0.9.3: [compose-miuix-ui/miuix](https://github.com/compose-miuix-ui/miuix), Apache-2.0. Used as Compose dependencies.
 - Xposed API 82: [rovo89/XposedBridge](https://github.com/rovo89/XposedBridge), compile-only API supplied at runtime by LSPosed. It is not packaged in the APK.
 - AndroidX/Jetpack and Kotlin are used under their respective Apache-2.0 licenses.
-- Twenty-one Material Icons 1.7.8 vector source files are vendored from the official `androidx.compose.material:material-icons-extended-android:1.7.8:sources` artifact under `app/src/main/java/androidx/compose/material/icons/`. Their original Android Open Source Project copyright/Apache-2.0 notices are preserved. Only the icons used by the UI are included, avoiding the entire extended icon library in the APK.
+- Selected Material Icons 1.7.8 vector source files are vendored from the official `androidx.compose.material:material-icons-extended-android:1.7.8:sources` artifact under `app/src/main/java/androidx/compose/material/icons/`. Their original Android Open Source Project copyright/Apache-2.0 notices are preserved. Only the icons used by the UI are included, avoiding the entire extended icon library in the APK.
 - JSON-java is used only by the JVM core/test environment. The APK uses Android's built-in `org.json`.
 
 XBlocker is an independent project and is not affiliated with X, LSPosed, or the dictionary maintainers.

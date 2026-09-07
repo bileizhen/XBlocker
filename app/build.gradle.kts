@@ -4,14 +4,16 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 android {
+    // Keep the source namespace stable; applicationId is the installed/module package.
     namespace = "io.github.xblocker"
     compileSdk = 37
     defaultConfig {
-        applicationId = "io.github.xblocker"
+        applicationId = "io.github.bileizhen.xblocker"
         minSdk = 28
         targetSdk = 36
-        versionCode = 5
-        versionName = "0.2.3"
+        versionCode = 6
+        versionName = "0.2.4"
+        // The LSPosed repository requires a no-domain package to use the GitHub username.
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Supplied by Xiaomi after the app's Super Island service is enabled.
         resValue("string", "xiaomi_app_id", providers.gradleProperty("xiaomiAppId").orElse("").get())
