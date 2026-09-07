@@ -94,6 +94,12 @@ internal fun LazyListScope.settingsItems(
                 startAction = { SettingsIcon(Icons.Rounded.Notifications) },
                 checked = state.focusNotification, onCheckedChange = onToggleFocusNotification,
             )
+            ArrowPreference(
+                title = "一键请求作用域",
+                summary = "通过 LSPosed 服务申请 X 与系统侧作用域，一次确认",
+                startAction = { SettingsIcon(Icons.Rounded.Security) },
+                onClick = vm::requestAllScopes,
+            )
         }
     }
     item {

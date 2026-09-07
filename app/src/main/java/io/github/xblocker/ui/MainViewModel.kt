@@ -95,6 +95,20 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         } else message("请打开 LSPosed → 模块 → XBlocker，勾选所需作用域后重启系统界面")
     }
 
+    /** OShin-style manual entry: request the complete scope list in one LSPosed confirmation. */
+    fun requestAllScopes() {
+        if (!XposedServiceClient.connected()) {
+            message("当前 LSPosed 未提供服务接口，请在 LSPosed → 模块 → XBlocker 中手动勾选作用域")
+            return
+        }
+        val packages = listOf("com.twitter.android") + ScopeNotice.requiredScopes()
+        message("正在向 LSPosed 申请 ${packages.size} 项作用域…")
+        XposedServiceClient.requestScope(packages) { approved, error ->
+            message(if (approved != null) "已授权 ${approved.size} 项作用域；请按 LSPosed 提示重启相关进程"
+            else "授权未完成：${error?.take(80)}")
+        }
+    }
+
     fun dismissScopePrompt() {
         repo.setScopePromptShown(io.github.xblocker.BuildConfig.VERSION_CODE)
         scopePromptState.value = null
