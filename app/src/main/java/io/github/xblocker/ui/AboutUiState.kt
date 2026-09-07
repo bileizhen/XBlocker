@@ -16,6 +16,7 @@ data class AboutUiState(
     val links: List<AboutLink> = listOf(
         AboutLink("GitHub", "https://github.com/bileizhen/xblocker"),
         AboutLink("QQ交流群", "https://qm.qq.com/q/ngMDU5QcFM"),
+        AboutLink("Telegram 频道", "https://t.me/bileizhen_XBlocker"),
         AboutLink("开源许可", "xblocker:licenses"),
         AboutLink("隐私说明", "xblocker:privacy"),
     ),
