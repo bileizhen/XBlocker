@@ -164,10 +164,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         withContext(Dispatchers.IO) { repo.setFluidCloud(enabled) }
         val app = getApplication<Application>()
         runCatching {
-            if (enabled) {
-                io.github.xblocker.fluid.FluidStatus.ensureChannels(app)
-                io.github.xblocker.fluid.FluidStatus.onDiagnostics(app, repo.diagnostics())
-            } else app.getSystemService(android.app.NotificationManager::class.java)
+            if (!enabled) app.getSystemService(android.app.NotificationManager::class.java)
                 ?.cancel(io.github.xblocker.fluid.FluidStatus.CAPSULE_ID)
         }.onFailure { message("实时状态通知更新失败：${it.message?.take(80)}") }
         refresh()
@@ -176,10 +173,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         withContext(Dispatchers.IO) { repo.setFocusNotification(enabled) }
         val app = getApplication<Application>()
         runCatching {
-            if (enabled) {
-                io.github.xblocker.fluid.FocusStatus.ensureChannels(app)
-                io.github.xblocker.fluid.FocusStatus.onDiagnostics(app, repo.diagnostics())
-            } else app.getSystemService(android.app.NotificationManager::class.java)
+            if (!enabled) app.getSystemService(android.app.NotificationManager::class.java)
                 ?.cancel(io.github.xblocker.fluid.FocusStatus.NOTIFICATION_ID)
         }.onFailure { message("焦点通知更新失败：${it.message?.take(80)}") }
         refresh()

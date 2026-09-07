@@ -26,7 +26,8 @@ class Repository(context: Context) {
     fun settings(): FilterSettings = ConfigCodec.decode(JSONObject(prefs.getString("settings", "{}")!!))
     fun save(settings: FilterSettings) { synchronized(lock) { check(prefs.edit().putString("settings", ConfigCodec.encode(settings).toString()).commit()) } }
     fun cloud(): String = prefs.getString("cloud", "")!!
-    fun snapshot(): String = JSONObject().put("settings", ConfigCodec.encode(settings())).put("cloud", cloud()).toString()
+    fun snapshot(): String = JSONObject().put("settings", ConfigCodec.encode(settings())).put("cloud", cloud())
+        .put("fluidCloud", fluidCloud()).put("focusNotification", focusNotification()).toString()
     fun lastSync(): Long = prefs.getLong("lastSync", 0)
     fun syncError(): String = prefs.getString("syncError", "")!!
     fun etag(): String = prefs.getString("etag", "")!!

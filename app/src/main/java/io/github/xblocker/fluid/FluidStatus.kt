@@ -6,20 +6,22 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.Bundle
 import io.github.xblocker.R
 import io.github.xblocker.ui.MainActivity
 
 /**
- * Posts/cancels the fluid-cloud capsule notification from whatever context just received
- * diagnostics. X's bridge reports arrive as binder calls into this process, so the system
- * can start the provider process on demand; no foreground service or app task is needed.
+ * Posts/cancels the native capsule notification. The primary caller is X's process, so
+ * clearing the XBlocker task does not remove the owner of the live notification. The module
+ * provider may use the same class only as a fallback when X cannot post.
  * Android owns the timeout so a dead reporting process cannot leave a stale capsule.
  */
 object FluidStatus {
     const val CAPSULE_ID = 42
     const val REPORT_TIMEOUT_MS = 12_000L
+    private const val MODULE_PACKAGE = "io.github.bileizhen.xblocker"
     private const val CAPSULE_CHANNEL = "fluid_status_promoted"
     private const val SPAM_COLOR = 0xFFE5484D.toInt()
     private const val KEPT_COLOR = 0xFF46A759.toInt()
@@ -35,30 +37,29 @@ object FluidStatus {
     }
 
     /** diagnostics carries "fg", counters and "lastSeen" as persisted by Repository.report. */
-    fun onDiagnostics(context: Context, json: org.json.JSONObject) {
+    fun onDiagnostics(context: Context, json: org.json.JSONObject): Boolean {
         val blocked = json.optLong("blocked").coerceAtLeast(0)
         val tweets = maxOf(json.optLong("tweets"), blocked)
         val age = System.currentTimeMillis() - json.optLong("lastSeen")
         val fresh = age >= 0 && age < REPORT_TIMEOUT_MS
         val inX = fresh && json.optBoolean("fg", false)
-        val manager = context.getSystemService(NotificationManager::class.java) ?: return
+        val manager = context.getSystemService(NotificationManager::class.java) ?: return false
         if (!inX) {
             manager.cancel(CAPSULE_ID)
-            return
+            return true
         }
         // The chip only fits a handful of characters; the full ratio lives on the card.
         val chipText = "已拦$blocked"
-        val icon = runCatching { R.drawable.ic_notification }.getOrElse { android.R.drawable.stat_notify_error }
+        val icon = R.drawable.ic_notification
         val builder = Notification.Builder(context, CAPSULE_CHANNEL)
-            .setSmallIcon(icon)
+            .setSmallIcon(notificationIcon(context))
             .setContentTitle("XBlocker")
             .setContentText("本轮已拦截 $blocked / $tweets 条")
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setTimeoutAfter(REPORT_TIMEOUT_MS - age)
             .setCategory(Notification.CATEGORY_PROGRESS)
-            .setContentIntent(PendingIntent.getActivity(context, 0,
-                Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE))
+            .setContentIntent(contentIntent(context))
         if (Build.VERSION.SDK_INT >= 36) {
             // Red = removed spam share, green = kept tweets share. The promotion request
             // extras key mirrors NotificationCompat's setRequestPromotedOngoing;
@@ -78,6 +79,20 @@ object FluidStatus {
             builder.setProgress(maxOf(100, tweets).coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
                 blocked.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(), false)
         }
-        manager.notify(CAPSULE_ID, builder.build())
+        return runCatching {
+            manager.notify(CAPSULE_ID, builder.build())
+        }.isSuccess
     }
+
+    private fun notificationIcon(context: Context): Icon = runCatching {
+        val module = if (context.packageName == MODULE_PACKAGE) context
+        else context.createPackageContext(MODULE_PACKAGE, Context.CONTEXT_IGNORE_SECURITY)
+        Icon.createWithResource(module, R.drawable.ic_notification)
+    }.getOrElse { Icon.createWithResource(context, android.R.drawable.stat_notify_error) }
+
+    private fun contentIntent(context: Context): PendingIntent = PendingIntent.getActivity(
+        context, CAPSULE_ID,
+        Intent().setClassName(MODULE_PACKAGE, MainActivity::class.java.name),
+        PendingIntent.FLAG_IMMUTABLE,
+    )
 }

@@ -79,6 +79,8 @@ class XHook : IXposedHookLoadPackage {
         @Volatile private var filter: TimelineFilter? = null
         private val stats = io.github.xblocker.core.FilterStats()
         @Volatile private var enabled = false
+        @Volatile private var nativeStatus = false
+        @Volatile private var focusStatus = false
         private var lastSnapshot = ""
         private var hooks = 0
         private var adapter = ""
@@ -241,12 +243,14 @@ class XHook : IXposedHookLoadPackage {
                 val report = JSONObject().put("hooks", hooks).put("adapter", adapter).put("pid", Process.myPid())
                     .put("version", context.packageManager.getPackageInfo(context.packageName, 0).versionName)
                     .put("fg", resumed.get() > 0)
+                    .put("lastSeen", System.currentTimeMillis())
                     .put("seen", seen.get()).put("responses", responses.get()).put("filtered", filtered.get()).put("error", error)
                     .put("rules", filter?.ruleCount ?: 0).put("rejected", filter?.rejectedCount ?: 0)
                     .put("probe", JSONArray()) // Clear diagnostics retained from research builds.
                     .put("events", JSONArray(batch))
                     .put("fp", JSONArray(stats.fingerprint.toList().sorted()))
                 stats.toMap().forEach { (key, value) -> report.put(key, value) }
+                report.put("xOwned", publishStatus(report))
                 context.contentResolver.call(bridge, "report", null, Bundle().apply { putString("json", report.toString()) })
                 batch.forEach(queue::remove)
             } catch (e: Exception) {
@@ -275,8 +279,28 @@ class XHook : IXposedHookLoadPackage {
             val settings = ConfigCodec.decode(json.getJSONObject("settings"))
             filter = TimelineFilter(RuleEngine(settings, json.getString("cloud")), stats)
             enabled = settings.enabled
+            nativeStatus = json.optBoolean("fluidCloud", false)
+            focusStatus = json.optBoolean("focusNotification", false)
             lastSnapshot = snapshot
             return true
+        }
+
+        /** Publish from X's process so clearing the XBlocker task cannot remove the status. */
+        private fun publishStatus(report: JSONObject): Boolean = runCatching {
+            if (nativeStatus) {
+                io.github.xblocker.fluid.FluidStatus.ensureChannels(context)
+                check(io.github.xblocker.fluid.FluidStatus.onDiagnostics(context, report))
+            } else context.getSystemService(android.app.NotificationManager::class.java)
+                ?.cancel(io.github.xblocker.fluid.FluidStatus.CAPSULE_ID)
+            if (focusStatus) {
+                io.github.xblocker.fluid.FocusStatus.ensureChannels(context)
+                check(io.github.xblocker.fluid.FocusStatus.onDiagnostics(context, report))
+            } else context.getSystemService(android.app.NotificationManager::class.java)
+                ?.cancel(io.github.xblocker.fluid.FocusStatus.NOTIFICATION_ID)
+            true
+        }.getOrElse {
+            XposedBridge.log("XBlocker.Fluid: X process notification failed: ${it.javaClass.simpleName}")
+            false
         }
 
         /** Rebuilds the snapshot JSON directly from the module's shared prefs file. */
@@ -290,7 +314,9 @@ class XHook : IXposedHookLoadPackage {
                     XposedBridge.log("XBlocker: prefs fallback unreadable (cloud=false, file=${prefs.file?.absolutePath})")
                 return@runCatching null
             }
-            JSONObject().put("settings", JSONObject(settings)).put("cloud", cloud).toString()
+            JSONObject().put("settings", JSONObject(settings)).put("cloud", cloud)
+                .put("fluidCloud", prefs.getBoolean("fluidCloud", false))
+                .put("focusNotification", prefs.getBoolean("focusNotification", false)).toString()
         }.onFailure { if (prefsFailureLogged.compareAndSet(false, true)) XposedBridge.log("XBlocker: prefs fallback error: ${it.javaClass.simpleName}: ${it.message?.take(120)}") }.getOrNull()
     }
 }

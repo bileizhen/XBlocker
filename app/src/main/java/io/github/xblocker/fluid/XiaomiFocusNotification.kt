@@ -8,6 +8,7 @@ import android.provider.Settings
 import android.util.Log
 
 internal object XiaomiFocusNotification {
+    private const val MODULE_PACKAGE = "io.github.bileizhen.xblocker"
     fun apply(context: Context, builder: Notification.Builder, icon: Int, blocked: Long, tweets: Long) {
         // Capability comes from SystemUI, independently of the Android API level / device brand.
         // Let SystemUI enforce focus permission and fall back to our normal notification.
@@ -19,7 +20,9 @@ internal object XiaomiFocusNotification {
                 putString(XiaomiFocusPayload.PARAM_KEY, params.toString())
                 if (version >= 3) {
                     putBundle(XiaomiFocusPayload.PICS_KEY, Bundle().apply {
-                        putParcelable(XiaomiFocusPayload.ICON_KEY, Icon.createWithResource(context, icon))
+                        val module = if (context.packageName == MODULE_PACKAGE) context
+                        else context.createPackageContext(MODULE_PACKAGE, Context.CONTEXT_IGNORE_SECURITY)
+                        putParcelable(XiaomiFocusPayload.ICON_KEY, Icon.createWithResource(module, icon))
                     })
                 }
             }
