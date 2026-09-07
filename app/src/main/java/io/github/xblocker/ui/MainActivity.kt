@@ -160,18 +160,32 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
     var confirmClear by remember { mutableStateOf(false) }
     var showLogDialog by rememberSaveable { mutableStateOf(false) }
     var selectedUpdateSource by rememberSaveable { mutableStateOf(UpdateSource.GITHUB.name) }
+    var pendingNotificationTarget by rememberSaveable { mutableStateOf("") }
     val pages = listOf("概览", "规则", "记录", "设置", "主题设置", "关于", "运行诊断")
     val icons = listOf(Icons.Rounded.Cottage, Icons.AutoMirrored.Rounded.Rule, Icons.Rounded.History, Icons.Rounded.Settings)
     fun openUrl(url: String) { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }.onFailure { vm.message("没有可用的应用打开此链接") } }
     fun edit(kind: String) { editor = kind; editorText = if (kind == "白名单") state.settings.whitelist.joinToString("\n") else state.settings.customRules }
     val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) vm.setFluidCloud(true) else vm.message("需要通知权限才能显示实时拦截状态")
+        val target = pendingNotificationTarget
+        pendingNotificationTarget = ""
+        if (granted) {
+            if (target == "native") vm.setFluidCloud(true)
+            if (target == "focus") vm.setFocusNotification(true)
+        } else vm.message("需要通知权限才能显示实时拦截状态")
     }
     fun toggleFluidCloud(on: Boolean) {
         if (!on) { vm.setFluidCloud(false); return }
-        if (Build.VERSION.SDK_INT >= 33 && !NotificationManagerCompat.from(context).areNotificationsEnabled())
+        if (Build.VERSION.SDK_INT >= 33 && !NotificationManagerCompat.from(context).areNotificationsEnabled()) {
+            pendingNotificationTarget = "native"
             notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-        else vm.setFluidCloud(true)
+        } else vm.setFluidCloud(true)
+    }
+    fun toggleFocusNotification(on: Boolean) {
+        if (!on) { vm.setFocusNotification(false); return }
+        if (Build.VERSION.SDK_INT >= 33 && !NotificationManagerCompat.from(context).areNotificationsEnabled()) {
+            pendingNotificationTarget = "focus"
+            notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else vm.setFocusNotification(true)
     }
     val import = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {
@@ -369,6 +383,7 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
                         onOpenDiagnostics = { if (backStack.size == 1) backStack = backStack + 6 },
                         onOpenAbout = { if (backStack.size == 1) backStack = backStack + 5 },
                         onToggleFluidCloud = ::toggleFluidCloud,
+                        onToggleFocusNotification = ::toggleFocusNotification,
                         onSendLog = { showLogDialog = true },
                     )
                     6 -> {

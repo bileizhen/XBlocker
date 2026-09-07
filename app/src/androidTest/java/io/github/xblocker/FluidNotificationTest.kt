@@ -37,6 +37,7 @@ class FluidNotificationTest {
             FluidStatus.ensureChannels(context)
             report(2)
             awaitState("Report must publish without a service") { active() != null }
+            assertFalse(active()!!.notification.extras.containsKey("miui.focus.param"))
             assertTrue(active()!!.notification.timeoutAfter in 1..FluidStatus.REPORT_TIMEOUT_MS)
             report(7)
             awaitState("Subsequent report must update the existing notification") {

@@ -78,7 +78,6 @@ object FluidStatus {
             builder.setProgress(maxOf(100, tweets).coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
                 blocked.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(), false)
         }
-        XiaomiFocusNotification.apply(context, builder, icon, blocked, tweets)
         manager.notify(CAPSULE_ID, builder.build())
     }
 }

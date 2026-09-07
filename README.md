@@ -27,7 +27,7 @@ XBlocker 是一个 Android 原生 X 客户端的 LSPosed 过滤模块。它在�
 - **多版本适配**：按宿主接口自动选择过滤入口，不依赖单一版本号；未知结构原样透传。
 - **应用内更新**：启动自动检查 GitHub 正式版，可手动检查；下载时可选择 GitHub 原站或 `gh.dpik.top` 镜像，然后请求系统安装。
 - **诊断记录**：查看模块连接、数据入口、拦截计数和最近 200 条记录，可导出诊断 ZIP。
-- **实时拦截状态**：发送小米 HyperOS 3 超级岛、HyperOS 2 焦点通知模板和 Android 16 实时通知；内置仅对 XBlocker 生效的小米 SystemUI 白名单与签名 Hook（待真机验证），也可配合 HyperIsland，其他情况保留普通通知。详见[小米超级岛适配](docs/xiaomi-super-island.md)。
+- **实时拦截状态**：原生通道使用 Android 16 实时通知接口，由系统决定展示为小米超级岛或 O 系流体云，不写入焦点通知参数；焦点通知转换另有独立开关。详见[小米超级岛适配](docs/xiaomi-super-island.md)和[流体云适配](docs/oppo-fluid-cloud.md)。
 - **无需常驻监控**：实时状态随 X 的回报更新，由系统超时清理，无需保留 XBlocker 后台卡片。OPPO / 一加的当前接入范围与解锁模块说明见[流体云适配](docs/oppo-fluid-cloud.md)。
 - **Miuix 界面**：支持浅色、深色、Monet、模糊、液态玻璃、预测性返回和全局缩放。
 
@@ -44,7 +44,7 @@ XBlocker 优先检测 OkHttp GraphQL 入口，必要时回退 Jackson / LoganSqu
 ## 安装
 
 1. 从 [Releases](https://github.com/bileizhen/XBlocker/releases) 下载并安装 APK。
-2. 在 LSPosed 中启用 **XBlocker**，勾选 **X**（`com.twitter.android`）；小米使用内置超级岛解锁时额外勾选 **系统界面**（`com.android.systemui`），并重启系统界面或手机。O 系原生注册解锁尚未完成。
+2. 在 LSPosed 中启用 **XBlocker**，勾选 **X**（`com.twitter.android`）。只有启用“焦点通知转换”或小米焦点解锁 Hook 时才需要额外勾选 **系统界面**（`com.android.systemui`）；原生超级岛/流体云通道不依赖焦点通知。
 3. 强行停止 X，再重新打开。
 4. 打开 XBlocker，在“运行诊断”确认模块连接和时间线计数。
 

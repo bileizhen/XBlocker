@@ -33,6 +33,7 @@ data class UiState(
     val marker: JSONObject = JSONObject(),
     val history: List<JSONObject> = emptyList(),
     val fluidCloud: Boolean = false,
+    val focusNotification: Boolean = false,
     val colorMode: Int = 0,
     val appearance: AppearanceSettings = AppearanceSettings(),
     val autoUpdate: Boolean = true,
@@ -128,6 +129,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 lastSync = repo.lastSync(), syncError = repo.syncError(), blocked = repo.blocked(), diagnostics = repo.diagnostics(),
                 marker = repo.marker(),
                 fluidCloud = repo.fluidCloud(),
+                focusNotification = repo.focusNotification(),
                 colorMode = repo.colorMode(),
                 appearance = repo.appearance(),
                 autoUpdate = repo.autoUpdate(),
@@ -168,6 +170,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             } else app.getSystemService(android.app.NotificationManager::class.java)
                 ?.cancel(io.github.xblocker.fluid.FluidStatus.CAPSULE_ID)
         }.onFailure { message("实时状态通知更新失败：${it.message?.take(80)}") }
+        refresh()
+    } }
+    fun setFocusNotification(enabled: Boolean) { viewModelScope.launch {
+        withContext(Dispatchers.IO) { repo.setFocusNotification(enabled) }
+        val app = getApplication<Application>()
+        runCatching {
+            if (enabled) {
+                io.github.xblocker.fluid.FocusStatus.ensureChannels(app)
+                io.github.xblocker.fluid.FocusStatus.onDiagnostics(app, repo.diagnostics())
+            } else app.getSystemService(android.app.NotificationManager::class.java)
+                ?.cancel(io.github.xblocker.fluid.FocusStatus.NOTIFICATION_ID)
+        }.onFailure { message("焦点通知更新失败：${it.message?.take(80)}") }
         refresh()
     } }
     fun clearHistory() { viewModelScope.launch { withContext(Dispatchers.IO) { repo.clearHistory() }; refresh() } }

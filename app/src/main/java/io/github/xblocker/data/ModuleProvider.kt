@@ -29,9 +29,13 @@ class ModuleProvider : ContentProvider() {
                 val identity = Binder.clearCallingIdentity()
                 try {
                     runCatching {
+                        val diagnostics = repository.diagnostics()
                         if (repository.fluidCloud()) io.github.xblocker.fluid.FluidStatus.ensureChannels(ctx)
-                            .let { io.github.xblocker.fluid.FluidStatus.onDiagnostics(ctx, repository.diagnostics()) }
+                            .let { io.github.xblocker.fluid.FluidStatus.onDiagnostics(ctx, diagnostics) }
                         else ctx.getSystemService(android.app.NotificationManager::class.java)?.cancel(io.github.xblocker.fluid.FluidStatus.CAPSULE_ID)
+                        if (repository.focusNotification()) io.github.xblocker.fluid.FocusStatus.ensureChannels(ctx)
+                            .let { io.github.xblocker.fluid.FocusStatus.onDiagnostics(ctx, diagnostics) }
+                        else ctx.getSystemService(android.app.NotificationManager::class.java)?.cancel(io.github.xblocker.fluid.FocusStatus.NOTIFICATION_ID)
                     }.onFailure { android.util.Log.w("XBlocker.Fluid", "Report notification failed", it) }
                 } finally {
                     Binder.restoreCallingIdentity(identity)

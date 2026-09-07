@@ -82,6 +82,8 @@ class Repository(context: Context) {
     fun clearHistory() { synchronized(lock) { prefs.edit().remove("history").remove("blocked").apply() } }
     fun fluidCloud(): Boolean = prefs.getBoolean("fluidCloud", false)
     fun setFluidCloud(enabled: Boolean) { prefs.edit().putBoolean("fluidCloud", enabled).commit() }
+    fun focusNotification(): Boolean = prefs.getBoolean("focusNotification", false)
+    fun setFocusNotification(enabled: Boolean) { prefs.edit().putBoolean("focusNotification", enabled).commit() }
     fun autoUpdate(): Boolean = prefs.getBoolean("autoUpdate", true)
     fun setAutoUpdate(enabled: Boolean) { check(prefs.edit().putBoolean("autoUpdate", enabled).commit()) }
     /** SuKIsu-style color mode: 0 system, 1 light, 2 dark, 3-5 the Monet variants. */

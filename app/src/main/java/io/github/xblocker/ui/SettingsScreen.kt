@@ -25,6 +25,7 @@ internal fun LazyListScope.settingsItems(
     onOpenAbout: () -> Unit,
     onSendLog: () -> Unit,
     onToggleFluidCloud: (Boolean) -> Unit,
+    onToggleFocusNotification: (Boolean) -> Unit,
 ) {
     item {
         Card {
@@ -69,10 +70,16 @@ internal fun LazyListScope.settingsItems(
     item {
         Card {
             SwitchPreference(
-                title = "实时拦截状态",
-                summary = "使用 X 时显示拦截进度，无需保留 XBlocker 后台卡片；支持小米超级岛与流体云，需系统通知权限",
+                title = "原生超级岛 / 流体云",
+                summary = "使用原生实时通知接口，不使用焦点通知；无需保留 XBlocker 后台卡片",
                 startAction = { SettingsIcon(Icons.Rounded.NotificationsActive) },
                 checked = state.fluidCloud, onCheckedChange = onToggleFluidCloud,
+            )
+            SwitchPreference(
+                title = "焦点通知转换",
+                summary = "独立发布小米焦点通知，需 HyperIsland 或系统支持",
+                startAction = { SettingsIcon(Icons.Rounded.Notifications) },
+                checked = state.focusNotification, onCheckedChange = onToggleFocusNotification,
             )
         }
     }
