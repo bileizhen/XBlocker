@@ -19,4 +19,8 @@ XBlocker is an independent project and is not affiliated with X, LSPosed, or the
 - The floating bar and liquid helpers identify their origins as the [Miuix examples](https://github.com/compose-miuix-ui/miuix) and [Kyant0/AndroidLiquidGlass](https://github.com/Kyant0/AndroidLiquidGlass), Apache-2.0. Original source notices remain in those files. SukiSU-specific adaptations are included under the upstream project's GPL-3.0 terms.
 - [LSPosed/LSPosed](https://github.com/LSPosed/LSPosed), commit `df74d83eb03a44cc6ad268841ac2ada28d077c77`, was cloned and inspected. Its public `HomeFragment.java` / `fragment_home.xml` are the older View UI, not the Compose theme UI in the supplied LSPosed 2.2.0 screenshots. No old View manager code is linked into XBlocker; that screenshot is the visual reference and the matching Compose implementation comes from SukiSU.
 
+## libxposed service AIDL (2026-09-07)
+
+- XBlocker re-implements the [libxposed/service](https://github.com/libxposed/service) (Apache-2.0) binder wire format — interface descriptors and absolute transaction codes — in `XposedServiceProvider.kt` to receive the module service binder from LSPosed and query or request module scope from the app process. No upstream code is included.
+
 License texts are bundled in `app/src/main/assets/licenses/`. XBlocker's original code retains its MIT notice in `LICENSE`. The combined application incorporating the GPL-covered SukiSU UI must be distributed under GPL-3.0, with its corresponding source, build files, and these notices. The original MIT notice does not replace the terms of the imported code. See `COPYING` for the combined distribution license.

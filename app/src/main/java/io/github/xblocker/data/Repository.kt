@@ -87,6 +87,20 @@ class Repository(context: Context) {
         for (key in listOf("pid", "version", "phase", "fallback", "hooks", "adapter", "error")) if (payload.has(key)) marker.put(key, payload.opt(key))
         commitAndShare(prefs.edit().putString("marker", marker.toString()))
     } }
+
+    /** System-side hook presence markers, keyed "hookMarker.<phase>" — proof a scope is active. */
+    fun reportHookMarker(payload: JSONObject) { synchronized(lock) {
+        val phase = payload.optString("phase")
+        if (phase.isBlank()) return
+        payload.put("lastSeen", System.currentTimeMillis())
+        commitAndShare(prefs.edit().putString("hookMarker.$phase", payload.toString()))
+    } }
+    fun hookMarker(phase: String): JSONObject? =
+        prefs.getString("hookMarker.$phase", null)?.let { runCatching { JSONObject(it) }.getOrNull() }
+
+    /** Version code the fluid-cloud scope prompt was last shown for; 0 = never. */
+    fun scopePromptVersion(): Int = prefs.getInt("scopePromptVersion", 0)
+    fun setScopePromptShown(version: Int) { commitAndShare(prefs.edit().putInt("scopePromptVersion", version)) }
     fun clearHistory() { synchronized(lock) { commitAndShare(prefs.edit().remove("history").remove("blocked")) } }
     fun fluidCloud(): Boolean = prefs.getBoolean("fluidCloud", false)
     fun setFluidCloud(enabled: Boolean) { check(prefs.edit().putBoolean("fluidCloud", enabled).commit()); makeSharedPrefsReadable() }

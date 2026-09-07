@@ -48,6 +48,7 @@ class XHook : IXposedHookLoadPackage {
                 .onFailure {
                     XposedBridge.log("XBlocker.FluidCloud: initialization failed: ${it.javaClass.simpleName}")
                 }
+            markSystemProcess(param)
         }
         if (param.packageName == "com.android.systemui" && param.processName == param.packageName) {
             runCatching { XiaomiFocusHook.install(param.classLoader) }.onFailure {
@@ -65,6 +66,20 @@ class XHook : IXposedHookLoadPackage {
                     sendMarker(context, JSONObject().put("phase", "init-failed")
                         .put("error", "${it.javaClass.simpleName}: ${it.message?.take(160)}"))
                 }
+            }
+        })
+    }
+
+    /**
+     * Reports that this system-side scope is actually active, so the module app can tell a
+     * missing scope from an enabled one and only prompt when needed. Sent once per process
+     * start through the marker broadcast, which wakes the app if it is not running.
+     */
+    private fun markSystemProcess(param: XC_LoadPackage.LoadPackageParam) {
+        if (param.processName != param.packageName) return
+        XposedHelpers.findAndHookMethod(Application::class.java, "attach", Context::class.java, object : XC_MethodHook() {
+            override fun afterHookedMethod(p: MethodHookParam) {
+                sendMarker(p.args[0] as Context, JSONObject().put("phase", "hook@${param.packageName}"))
             }
         })
     }

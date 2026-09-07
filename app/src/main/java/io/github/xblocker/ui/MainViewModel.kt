@@ -12,6 +12,7 @@ import io.github.xblocker.data.Repository
 import io.github.xblocker.data.InstallResult
 import io.github.xblocker.data.UpdateDownloadState
 import io.github.xblocker.data.UpdateSource
+import io.github.xblocker.data.XposedServiceClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,6 +41,9 @@ data class UiState(
     val message: String = "",
 )
 
+/** Fluid cloud is on but system-side scopes are missing; serviceConnected selects the CTA. */
+data class ScopePrompt(val missing: List<String>, val serviceConnected: Boolean)
+
 class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = Repository(app)
     private val mutable = MutableStateFlow(UiState())
@@ -50,9 +54,49 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val updateDownload = download.asStateFlow()
     private val checking = MutableStateFlow(false)
     val checkingUpdate = checking.asStateFlow()
+    private val scopePromptState = MutableStateFlow<ScopePrompt?>(null)
+    val scopePrompt = scopePromptState.asStateFlow()
+    @Volatile private var scopeChecked = false
     init {
         viewModelScope.launch { while (true) { refresh(); delay(5000) } }
         if (repo.autoUpdate()) checkForUpdates(automatic = true)
+        // The LSPosed binder may land after the first check; re-evaluate once it does.
+        XposedServiceClient.onConnected { evaluateScopePrompt() }
+    }
+
+    /** Prompts once per app version when the fluid cloud route is on but scopes are missing. */
+    private fun evaluateScopePrompt() {
+        if (scopeChecked) return
+        val version = io.github.xblocker.BuildConfig.VERSION_CODE
+        if (repo.scopePromptVersion() >= version) return
+        if (!mutable.value.fluidCloud) return
+        val required = ScopeNotice.requiredScopes()
+        if (XposedServiceClient.connected()) {
+            val missing = required.filter { it !in XposedServiceClient.scope().orEmpty() }
+            if (missing.isEmpty()) repo.setScopePromptShown(version)
+            else { scopeChecked = true; scopePromptState.value = ScopePrompt(missing, true) }
+        } else if (repo.hookMarker("hook@com.android.systemui") == null) {
+            // No libxposed binder (legacy module / fork without delivery): a SystemUI hook
+            // marker is the only proof the scope chain is live, so prompt when it is absent.
+            scopeChecked = true
+            scopePromptState.value = ScopePrompt(required, false)
+        } else repo.setScopePromptShown(version)
+    }
+
+    fun requestScopes() {
+        val prompt = scopePromptState.value ?: return
+        dismissScopePrompt()
+        if (prompt.serviceConnected) {
+            XposedServiceClient.requestScope(prompt.missing) { approved, error ->
+                message(if (approved != null) "已授权 ${approved.size} 个作用域；请按 LSPosed 提示重启系统界面"
+                else "授权未完成：${error?.take(80)}。可改为在 LSPosed 中手动勾选。")
+            }
+        } else message("请打开 LSPosed → 模块 → XBlocker，勾选所需作用域后重启系统界面")
+    }
+
+    fun dismissScopePrompt() {
+        repo.setScopePromptShown(io.github.xblocker.BuildConfig.VERSION_CODE)
+        scopePromptState.value = null
     }
 
     fun dismissUpdate() {
@@ -137,6 +181,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
         mutable.value = next.copy(syncing = mutable.value.syncing, message = mutable.value.message,
             appearance = repo.appearance(), colorMode = repo.colorMode())
+        if (next.ready) runCatching { evaluateScopePrompt() }
     }
     fun update(change: (FilterSettings) -> FilterSettings) { viewModelScope.launch {
         withContext(Dispatchers.IO) { repo.save(change(repo.settings())) }; refresh()
@@ -168,6 +213,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 ?.cancel(io.github.xblocker.fluid.FluidStatus.CAPSULE_ID)
         }.onFailure { message("实时状态通知更新失败：${it.message?.take(80)}") }
         refresh()
+        if (enabled) runCatching { evaluateScopePrompt() }
     } }
     fun setFocusNotification(enabled: Boolean) { viewModelScope.launch {
         withContext(Dispatchers.IO) { repo.setFocusNotification(enabled) }

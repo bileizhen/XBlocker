@@ -144,6 +144,7 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
     val availableUpdate by vm.availableUpdate.collectAsStateWithLifecycle()
     val updateDownload by vm.updateDownload.collectAsStateWithLifecycle()
+    val scopePrompt by vm.scopePrompt.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var selectedPage by rememberSaveable { mutableIntStateOf(0) }
@@ -479,6 +480,30 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 TextButton("取消", onClick = { confirmClear = false }, modifier = Modifier.weight(1f))
                 TextButton("清空", onClick = { vm.clearHistory(); confirmClear = false }, modifier = Modifier.weight(1f))
+            }
+        }
+        val activePrompt = scopePrompt
+        SuperDialog(show = activePrompt != null, title = "需要启用作用域",
+            summary = if (activePrompt?.serviceConnected == true) "原生超级岛 / 流体云需要以下作用域，点击“去授权”后 LSPosed 会弹出确认："
+            else "原生超级岛 / 流体云需要以下作用域，请在 LSPosed → 模块 → XBlocker 中勾选后重启系统界面：",
+            onDismissRequest = vm::dismissScopePrompt) {
+            Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                activePrompt?.missing?.forEach { Text("· ${ScopeNotice.label(it)}\n  $it", fontSize = 13.sp) }
+                Text("授权完成后，LSPosed 可能要求重启系统界面或相关系统进程。", fontSize = 13.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    TextButton("暂不", onClick = vm::dismissScopePrompt, modifier = Modifier.weight(1f))
+                    if (activePrompt?.serviceConnected == true) {
+                        TextButton("去授权", onClick = vm::requestScopes, modifier = Modifier.weight(1f))
+                    } else {
+                        TextButton("打开 LSPosed", onClick = {
+                            val launch = runCatching { context.packageManager.getLaunchIntentForPackage("org.lsposed.manager") }.getOrNull()
+                            if (launch != null) runCatching { context.startActivity(launch) }
+                                .onFailure { vm.message("无法打开 LSPosed：${it.message?.take(60)}") }
+                            else vm.message("未找到 LSPosed 管理器，请手动打开后勾选作用域")
+                            vm.requestScopes()
+                        }, modifier = Modifier.weight(1f))
+                    }
+                }
             }
         }
         PreviewDialog(preview, state, onDismiss = { preview = false })
