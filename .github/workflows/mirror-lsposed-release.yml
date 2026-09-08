@@ -1,0 +1,94 @@
+# Mirrors a published main-repo release to Xposed-Modules-Repo/io.github.bileizhen.xblocker,
+# following the module repository conventions already used by the manual publish scripts:
+# tag "<versionCode>-<versionName>", title = version name, APK asset named
+# "XBlocker-<versionName>.apk", prereleases marked non-latest.
+# Requires the LSPOSED_REPO_TOKEN secret: a PAT with release write access to the mirror repo.
+
+name: Mirror release to LSPosed module repo
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Main repository release tag to mirror (e.g. v0.2.8-rc.2)'
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mirror-lsposed-release
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --json tagName,name,isPrerelease,body > release.json
+          NAME="$(jq -r .name release.json)"
+          if [ -z "$NAME" ] || [ "$NAME" = "null" ] || [ "$(jq -r .tagName release.json)" != "v$NAME" ]; then
+            echo "::error::Release title must be the bare version name and its tag must be v<version> (got tag $(jq -r .tagName release.json), title '$NAME')."
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$(jq -r .isPrerelease release.json)" >> "$GITHUB_OUTPUT"
+          jq -r '.body // ""' release.json > body.md
+
+      - name: Read build.gradle.kts from the release commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.release.outputs.tag }}
+          sparse-checkout: app/build.gradle.kts
+          sparse-checkout-cone-mode: false
+
+      - name: Parse build.gradle.kts
+        id: gradle
+        run: |
+          CODE="$(grep -oP 'versionCode\s*=\s*\K[0-9]+' app/build.gradle.kts)"
+          NAME="$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts)"
+          if [ -z "$CODE" ] || [ -z "$NAME" ] || [ "$NAME" != "${{ steps.release.outputs.name }}" ]; then
+            echo "::error::build.gradle.kts at the release tag has versionCode='$CODE' versionName='$NAME', expected versionName='${{ steps.release.outputs.name }}'."
+            exit 1
+          fi
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+
+      - name: Download release APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "${{ steps.release.outputs.tag }}" --repo "$GITHUB_REPOSITORY" \
+            --pattern 'XBlocker-*.apk' --clobber
+          APK="XBlocker-${{ steps.release.outputs.name }}.apk"
+          if [ ! -f "$APK" ]; then
+            echo "::error::Expected asset $APK in release ${{ steps.release.outputs.tag }}."
+            ls -l XBlocker-*.apk 2>/dev/null || true
+            exit 1
+          fi
+
+      - name: Create mirror release
+        env:
+          GH_TOKEN: ${{ secrets.LSPOSED_REPO_TOKEN }}
+          MIRROR: Xposed-Modules-Repo/io.github.bileizhen.xblocker
+        run: |
+          MIRROR_TAG="${{ steps.gradle.outputs.code }}-${{ steps.release.outputs.name }}"
+          if gh release view "$MIRROR_TAG" --repo "$MIRROR" > /dev/null 2>&1; then
+            echo "Mirror release $MIRROR_TAG already exists; nothing to do."
+            exit 0
+          fi
+          FLAGS=(--repo "$MIRROR" --target main --title "${{ steps.release.outputs.name }}" --notes-file body.md)
+          if [ "${{ steps.release.outputs.prerelease }}" = "true" ]; then
+            FLAGS+=(--prerelease --latest=false)
+          else
+            FLAGS+=(--latest)
+          fi
+          gh release create "$MIRROR_TAG" "XBlocker-${{ steps.release.outputs.name }}.apk" "${FLAGS[@]}"
