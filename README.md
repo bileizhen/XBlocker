@@ -5,7 +5,7 @@
 
   [![License](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
   [![Android 9+](https://img.shields.io/badge/Android-9%2B-blue.svg)](https://www.python.org/)
-  [![LSPosed](https://img.shields.io/badge/LSPosed-legacy-orange.svg)](https://lsposed.org)
+  [![LSPosed](https://img.shields.io/badge/LSPosed-API_101-orange.svg)](https://lsposed.org)
   [![GitHub](https://img.shields.io/badge/作者-bileizhen-blue)](https://github.com/bileizhen)
 
   <p>
