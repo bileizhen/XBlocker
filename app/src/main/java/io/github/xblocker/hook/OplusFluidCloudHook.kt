@@ -120,7 +120,7 @@ internal object OplusFluidCloudHook {
                 object : XC_MethodHook() {
                     override fun afterHookedMethod(param: MethodHookParam) {
                         when (param.args[0]) {
-                            SEEDLING_STATE_CLASS -> (param.result as? Class<*>)?.let(::hookStateReload)
+                            SEEDLING_STATE_CLASS -> (param.result as? Class<*>)?.let(::onSeedlingStateLoaded)
                             OplusCapsuleAutoExpandHook.MODEL_CLASS ->
                                 (param.result as? Class<*>)?.let(OplusCapsuleAutoExpandHook::install)
                         }
@@ -128,9 +128,28 @@ internal object OplusFluidCloudHook {
                 },
             )
             // Also cover classes already visible when this process installs its hooks.
+            XposedHelpers.findClassIfExists(SEEDLING_STATE_CLASS, classLoader)?.let(::onSeedlingStateLoaded)
             XposedHelpers.findClassIfExists(OplusCapsuleAutoExpandHook.MODEL_CLASS, classLoader)
                 ?.let(OplusCapsuleAutoExpandHook::install)
         }.onFailure { XposedBridge.log("$TAG: front exemption hook failed: ${it.javaClass.simpleName}") }
+    }
+
+    /**
+     * The seedling state class is the one plugin entry still crossing the reflective
+     * loadClass seam. Internal model classes such as the capsule decision class resolve
+     * through native DEX linking and never appear there, so 0.2.8-rc.1's wait never ended
+     * and the automatic-expansion hook never installed on the device. Resolve the model
+     * straight from the plugin loader as soon as that loader becomes reachable.
+     */
+    private fun onSeedlingStateLoaded(clazz: Class<*>) {
+        hookStateReload(clazz)
+        val loader = clazz.classLoader ?: return
+        runCatching { loader.loadClass(OplusCapsuleAutoExpandHook.MODEL_CLASS) }
+            .onFailure {
+                XposedBridge.log("$TAG: capsule model not in seedling loader: ${it.javaClass.simpleName}")
+            }
+            .getOrNull()
+            ?.let(OplusCapsuleAutoExpandHook::install)
     }
 
     private fun hookStateReload(clazz: Class<*>) {
