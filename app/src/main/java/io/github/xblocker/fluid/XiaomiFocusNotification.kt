@@ -13,7 +13,7 @@ internal object XiaomiFocusNotification {
         // Its canShowFocus provider call is slow and must not run on every host report.
         runCatching {
             val version = Settings.System.getInt(context.contentResolver, "notification_focus_protocol", 0)
-            val params = XiaomiFocusPayload.create(version, blocked, tweets) ?: return
+            val params = XiaomiFocusPayload.create(version, blocked, tweets, NotificationText.from(context)) ?: return
             val extras = Bundle().apply {
                 putString(XiaomiFocusPayload.PARAM_KEY, params.toString())
                 if (version >= 3) {

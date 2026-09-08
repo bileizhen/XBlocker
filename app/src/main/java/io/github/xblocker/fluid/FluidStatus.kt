@@ -26,9 +26,10 @@ object FluidStatus {
     private const val KEPT_COLOR = 0xFF46A759.toInt()
 
     fun ensureChannels(context: Context) {
+        val text = NotificationText.from(context)
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
-        manager.createNotificationChannel(NotificationChannel(CAPSULE_CHANNEL, "实时拦截状态", NotificationManager.IMPORTANCE_HIGH).apply {
-            description = "使用 X 时在超级岛、流体云或通知栏显示本轮拦截进度"
+        manager.createNotificationChannel(NotificationChannel(CAPSULE_CHANNEL, text.channel, NotificationManager.IMPORTANCE_HIGH).apply {
+            description = text.channelDescription
             setShowBadge(false)
             setSound(null, null)
             enableVibration(false)
@@ -37,6 +38,7 @@ object FluidStatus {
 
     /** diagnostics carries "fg", counters and "lastSeen" as persisted by Repository.report. */
     fun onDiagnostics(context: Context, json: org.json.JSONObject): Boolean {
+        val text = NotificationText.from(context)
         val blocked = json.optLong("blocked").coerceAtLeast(0)
         val tweets = maxOf(json.optLong("tweets"), blocked)
         val age = System.currentTimeMillis() - json.optLong("lastSeen")
@@ -48,11 +50,11 @@ object FluidStatus {
             return true
         }
         // The chip only fits a handful of characters; the full ratio lives on the card.
-        val chipText = "已拦$blocked"
+        val chipText = text.short.format(blocked)
         val builder = Notification.Builder(context, CAPSULE_CHANNEL)
             .setSmallIcon(notificationIcon(context))
             .setContentTitle("XBlocker")
-            .setContentText("本轮已拦截 $blocked / $tweets 条")
+            .setContentText(text.session.format(blocked, tweets))
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setTimeoutAfter(REPORT_TIMEOUT_MS - age)

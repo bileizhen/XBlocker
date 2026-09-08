@@ -2,6 +2,8 @@
 // XBlocker ZIP report, bounded collection, error feedback and grant-only sharing.
 package io.github.xblocker.ui
 
+import io.github.xblocker.R
+
 import android.content.ClipData
 import android.content.Intent
 import android.widget.Toast
@@ -35,6 +37,7 @@ import java.time.format.DateTimeFormatter
 @Composable
 internal fun SendLogDialog(show: Boolean, state: UiState, onDismissRequest: () -> Unit) {
     val context = LocalContext.current
+    val resources = androidx.compose.ui.platform.LocalResources.current
     val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
     val currentState by rememberUpdatedState(state)
@@ -47,33 +50,33 @@ internal fun SendLogDialog(show: Boolean, state: UiState, onDismissRequest: () -
                 withContext(Dispatchers.IO) {
                     val report = DiagnosticReport.create(context, snapshot)
                     try {
-                        checkNotNull(context.contentResolver.openOutputStream(uri, "wt")) { "无法打开保存位置" }
+                        checkNotNull(context.contentResolver.openOutputStream(uri, "wt")) { resources.getString(R.string.unable_to_open_save_location) }
                             .use { output -> report.inputStream().use { it.copyTo(output) } }
                     } finally { report.delete() }
                 }
-                message("日志已保存")
+                message(resources.getString(R.string.logs_saved))
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
-                message("日志保存失败：${error.message ?: error.javaClass.simpleName}")
+                message(resources.getString(R.string.unable_to_save_logs, error.message ?: error.javaClass.simpleName))
             } finally { busy = false }
         }
     }
     OverlayDialog(show = show && !busy, onDismissRequest = onDismissRequest, insideMargin = DpSize(0.dp, 0.dp)) {
-        Text("发送日志", modifier = Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 12.dp),
+        Text(resources.getString(R.string.share_logs), modifier = Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 12.dp),
             fontSize = MiuixTheme.textStyles.title4.fontSize, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center)
         ArrowPreference(
-            title = "保存日志", startAction = { Icon(Icons.Rounded.Save, null, modifier = Modifier.padding(end = 16.dp)) },
+            title = resources.getString(R.string.save_logs), startAction = { Icon(Icons.Rounded.Save, null, modifier = Modifier.padding(end = 16.dp)) },
             insideMargin = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
             onClick = {
                 onDismissRequest()
                 val stamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH_mm_ss"))
                 try { export.launch("XBlocker_bugreport_$stamp.zip") }
-                catch (error: Exception) { message("无法打开文件选择器：${error.message}") }
+                catch (error: Exception) { message(resources.getString(R.string.unable_to_open_file_picker, error.message)) }
             },
         )
         ArrowPreference(
-            title = "发送日志", startAction = { Icon(Icons.Rounded.Share, null, modifier = Modifier.padding(end = 16.dp)) },
+            title = resources.getString(R.string.share_logs), startAction = { Icon(Icons.Rounded.Share, null, modifier = Modifier.padding(end = 16.dp)) },
             insideMargin = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
             onClick = {
                 if (!busy) scope.launch {
@@ -86,22 +89,22 @@ internal fun SendLogDialog(show: Boolean, state: UiState, onDismissRequest: () -
                         val intent = Intent(Intent.ACTION_SEND).apply {
                             type = "application/zip"
                             putExtra(Intent.EXTRA_STREAM, uri)
-                            clipData = ClipData.newRawUri("XBlocker 日志", uri)
+                            clipData = ClipData.newRawUri(resources.getString(R.string.xblocker_logs), uri)
                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         }
-                        context.startActivity(Intent.createChooser(intent, "发送日志"))
+                        context.startActivity(Intent.createChooser(intent, resources.getString(R.string.share_logs)))
                     } catch (cancelled: CancellationException) {
                         throw cancelled
                     } catch (error: Exception) {
-                        message("无法发送日志：${error.message ?: error.javaClass.simpleName}")
+                        message(resources.getString(R.string.unable_to_share_logs, error.message ?: error.javaClass.simpleName))
                     } finally { busy = false }
                 }
             },
         )
-        TextButton("取消", onClick = onDismissRequest,
+        TextButton(resources.getString(R.string.cancel), onClick = onDismissRequest,
             modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 24.dp).padding(horizontal = 24.dp))
     }
-    OverlayDialog(show = busy, title = "正在整理日志", summary = "请稍候…", onDismissRequest = {}) {
+    OverlayDialog(show = busy, title = resources.getString(R.string.preparing_logs), summary = resources.getString(R.string.please_wait), onDismissRequest = {}) {
         Box(Modifier.fillMaxWidth().padding(12.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {
             CircularProgressIndicator()
         }

@@ -2,6 +2,8 @@
 // Same grouped preferences, icon spacing and arrows, wired to XBlocker settings.
 package io.github.xblocker.ui
 
+import io.github.xblocker.R
+
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material.icons.Icons
@@ -20,6 +22,8 @@ import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 internal fun LazyListScope.settingsItems(
+    context: android.content.Context,
+    resources: android.content.res.Resources,
     state: UiState,
     vm: MainViewModel,
     onOpenTheme: () -> Unit,
@@ -32,18 +36,18 @@ internal fun LazyListScope.settingsItems(
     item {
         Card {
             SwitchPreference(
-                title = "启动时自动检查更新", summary = "打开应用后检查 GitHub 最新发布",
+                title = resources.getString(R.string.check_for_updates_on_launch), summary = resources.getString(R.string.check_the_latest_github_release_when_opening),
                 startAction = { SettingsIcon(Icons.Filled.Update) },
                 checked = state.autoUpdate,
                 onCheckedChange = vm::setAutoUpdate,
             )
             OverlaySpinnerPreference(
-                title = "更新渠道",
-                summary = "接收的版本类型",
+                title = resources.getString(R.string.update_channel),
+                summary = resources.getString(R.string.which_releases_to_receive),
                 startAction = { SettingsIcon(Icons.Rounded.RocketLaunch) },
                 items = listOf(
-                    DropdownItem("正式版", summary = "仅接收稳定发布"),
-                    DropdownItem("预发布", summary = "提前获取 rc 测试版本"),
+                    DropdownItem(resources.getString(R.string.stable), summary = resources.getString(R.string.receive_stable_releases_only)),
+                    DropdownItem(resources.getString(R.string.pre_release), summary = resources.getString(R.string.get_early_access_to_release_candidates)),
                 ),
                 selectedIndex = state.updateChannel,
                 onSelectedIndexChange = vm::setUpdateChannel,
@@ -52,8 +56,24 @@ internal fun LazyListScope.settingsItems(
     }
     item {
         Card {
+            val tags = io.github.xblocker.i18n.AppLanguage.tags
+            OverlaySpinnerPreference(
+                title = resources.getString(R.string.language),
+                summary = resources.getString(R.string.language_summary),
+                startAction = { SettingsIcon(Icons.Rounded.Language) },
+                items = listOf(
+                    DropdownItem(resources.getString(R.string.follow_system)),
+                    DropdownItem("English"),
+                    DropdownItem("简体中文"),
+                    DropdownItem("繁體中文"),
+                ),
+                selectedIndex = tags.indexOf(io.github.xblocker.i18n.AppLanguage.current(context)).coerceAtLeast(0),
+                onSelectedIndexChange = { index ->
+                    (context as? android.app.Activity)?.let { io.github.xblocker.i18n.AppLanguage.set(it, tags[index]) }
+                },
+            )
             ArrowPreference(
-                title = "主题设置", summary = "主题、颜色与界面效果",
+                title = resources.getString(R.string.appearance), summary = resources.getString(R.string.theme_colors_and_interface_effects),
                 startAction = { SettingsIcon(Icons.Rounded.Palette) }, onClick = onOpenTheme,
             )
         }
@@ -61,19 +81,19 @@ internal fun LazyListScope.settingsItems(
     item {
         Card {
             SwitchPreference(
-                title = "仅过滤回复", summary = "关闭后也检查首页、搜索推文",
+                title = resources.getString(R.string.filter_replies_only), summary = resources.getString(R.string.when_off_also_checks_home_and_search),
                 startAction = { SettingsIcon(Icons.Rounded.ChatBubble) },
                 checked = state.settings.onlyReplies,
                 onCheckedChange = { value -> vm.update { it.copy(onlyReplies = value) } },
             )
             SwitchPreference(
-                title = "检查昵称和用户名", summary = "正文之外，也检查作者名称",
+                title = resources.getString(R.string.check_display_names_and_usernames), summary = resources.getString(R.string.also_match_against_author_names),
                 startAction = { SettingsIcon(Icons.Rounded.Badge) },
                 checked = state.settings.checkNames,
                 onCheckedChange = { value -> vm.update { it.copy(checkNames = value) } },
             )
             SwitchPreference(
-                title = "屏蔽推广广告", summary = "按推广标记移除，独立于词库和白名单",
+                title = resources.getString(R.string.block_promoted_ads), summary = resources.getString(R.string.remove_promoted_entries_independently_of_rules_and),
                 startAction = { SettingsIcon(Icons.Rounded.Block) },
                 checked = state.settings.blockPromoted,
                 onCheckedChange = { value -> vm.update { it.copy(blockPromoted = value) } },
@@ -83,20 +103,20 @@ internal fun LazyListScope.settingsItems(
     item {
         Card {
             SwitchPreference(
-                title = "原生超级岛 / 流体云",
-                summary = "使用原生实时通知接口，不使用焦点通知；无需保留 XBlocker 后台卡片",
+                title = resources.getString(R.string.native_super_island_fluid_cloud),
+                summary = resources.getString(R.string.uses_the_native_live_notification_api_no),
                 startAction = { SettingsIcon(Icons.Rounded.NotificationsActive) },
                 checked = state.fluidCloud, onCheckedChange = onToggleFluidCloud,
             )
             SwitchPreference(
-                title = "焦点通知转换",
-                summary = "独立发布小米焦点通知，需 HyperIsland 或系统支持",
+                title = resources.getString(R.string.focus_notification_conversion),
+                summary = resources.getString(R.string.publish_separate_xiaomi_focus_notifications_requires_hyperisland),
                 startAction = { SettingsIcon(Icons.Rounded.Notifications) },
                 checked = state.focusNotification, onCheckedChange = onToggleFocusNotification,
             )
             ArrowPreference(
-                title = "一键请求作用域",
-                summary = "通过 LSPosed 服务申请 X 与系统侧作用域，一次确认",
+                title = resources.getString(R.string.request_all_scopes),
+                summary = resources.getString(R.string.request_x_and_system_scopes_through_lsposed),
                 startAction = { SettingsIcon(Icons.Rounded.Security) },
                 onClick = vm::requestAllScopes,
             )
@@ -105,19 +125,19 @@ internal fun LazyListScope.settingsItems(
     item {
         Card {
             ArrowPreference(
-                title = "运行诊断", summary = "模块连接、数据入口与拦截计数",
+                title = resources.getString(R.string.diagnostics), summary = resources.getString(R.string.module_connection_data_adapter_and_block_counts),
                 startAction = { SettingsIcon(Icons.Rounded.Troubleshoot) }, onClick = onOpenDiagnostics,
             )
             ArrowPreference(
-                title = "发送日志",
+                title = resources.getString(R.string.share_logs),
                 startAction = { SettingsIcon(Icons.Rounded.BugReport) }, onClick = onSendLog,
             )
             ArrowPreference(
-                title = "关于",
+                title = resources.getString(R.string.about),
                 startAction = { SettingsIcon(Icons.Rounded.ContactPage) }, onClick = onOpenAbout,
             )
             ArrowPreference(
-                title = "检查更新", summary = "当前 v${io.github.xblocker.BuildConfig.VERSION_NAME} · ${if (state.autoUpdate) "启动时自动检查" else "仅手动检查"}",
+                title = resources.getString(R.string.check_for_updates), summary = resources.getString(R.string.current_v, io.github.xblocker.BuildConfig.VERSION_NAME, if (state.autoUpdate) resources.getString(R.string.check_on_launch) else resources.getString(R.string.manual_checks_only)),
                 startAction = { SettingsIcon(Icons.Rounded.NotificationsActive) },
                 onClick = { vm.checkForUpdates() },
             )

@@ -1,5 +1,7 @@
 package io.github.xblocker.ui
 
+import io.github.xblocker.R
+
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -46,6 +48,7 @@ data class UiState(
 data class ScopePrompt(val missing: List<String>, val serviceConnected: Boolean)
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
+    private val context get() = io.github.xblocker.i18n.AppLanguage.context(getApplication<Application>())
     private val repo = Repository(app)
     private val mutable = MutableStateFlow(UiState())
     val state = mutable.asStateFlow()
@@ -88,25 +91,25 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val prompt = scopePromptState.value ?: return
         dismissScopePrompt()
         if (prompt.serviceConnected) {
-            message("请在通知栏中处理 LSPosed 的作用域请求")
+            message(context.getString(R.string.handle_the_lsposed_scope_request_in_your))
             XposedServiceClient.requestScope(prompt.missing) { approved, error ->
-                message(if (approved != null) "已授权 ${approved.size} 个作用域；请按 LSPosed 提示重启系统界面"
-                else "授权未完成：${error?.take(80)}。可改为在 LSPosed 中手动勾选。")
+                message(if (approved != null) context.getString(R.string.scopes_authorized_restart_system_ui_as_instructed, approved.size)
+                else context.getString(R.string.authorization_incomplete_you_can_select_scopes_manually, error?.let { io.github.xblocker.i18n.LocalizedText.resolve(context, it) }?.take(80)))
             }
-        } else message("请打开 LSPosed → 模块 → XBlocker，勾选所需作用域后重启系统界面")
+        } else message(context.getString(R.string.open_lsposed_modules_xblocker_select_the_required))
     }
 
     /** OShin-style manual entry: request the complete scope list in one LSPosed confirmation. */
     fun requestAllScopes() {
         if (!XposedServiceClient.connected()) {
-            message("当前 LSPosed 未提供服务接口，请在 LSPosed → 模块 → XBlocker 中手动勾选作用域")
+            message(context.getString(R.string.lsposed_service_is_unavailable_select_scopes_manually))
             return
         }
         val packages = listOf("com.twitter.android") + ScopeNotice.requiredScopes()
-        message("正在申请 ${packages.size} 项作用域，请在通知栏中处理 LSPosed 的作用域请求")
+        message(context.getString(R.string.requesting_scopes_handle_the_lsposed_request_in, packages.size))
         XposedServiceClient.requestScope(packages) { approved, error ->
-            message(if (approved != null) "已授权 ${approved.size} 项作用域；请按 LSPosed 提示重启相关进程"
-            else "授权未完成：${error?.take(80)}")
+            message(if (approved != null) context.getString(R.string.scopes_authorized_restart_related_processes_as_instructed, approved.size)
+            else context.getString(R.string.authorization_incomplete, error?.let { io.github.xblocker.i18n.LocalizedText.resolve(context, it) }?.take(80)))
         }
     }
 
@@ -143,11 +146,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 val next = withContext(Dispatchers.IO) { AppUpdates.check(channel) }
                 update.value = next
                 if (next?.version != previous?.version) download.value = UpdateDownloadState.Idle
-                if (!automatic && next == null) message("当前已是最新正式版")
+                if (!automatic && next == null) message(context.getString(R.string.you_are_up_to_date_for_this))
             } catch (cancelled: kotlinx.coroutines.CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
-                if (!automatic) message("检查更新失败，请稍后重试")
+                if (!automatic) message(context.getString(R.string.unable_to_check_for_updates_try_again))
             } finally { checking.value = false }
         }
     }
@@ -168,7 +171,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             } catch (cancelled: kotlinx.coroutines.CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
-                download.value = UpdateDownloadState.Failed(source, error.message ?: "下载失败")
+                download.value = UpdateDownloadState.Failed(source, error.message ?: context.getString(R.string.download_failed_title))
             }
         }
     }
@@ -180,13 +183,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             .onSuccess { result ->
                 when (result) {
                     InstallResult.Started -> {
-                        message("已请求系统安装更新")
+                        message(context.getString(R.string.system_installation_requested))
                         dismissUpdate()
                     }
-                    InstallResult.PermissionRequired -> message("请允许本应用安装未知应用，然后再次点击请求安装")
+                    InstallResult.PermissionRequired -> message(context.getString(R.string.allow_this_app_to_install_unknown_apps))
                 }
             }
-            .onFailure { message("无法启动安装：${it.message ?: "请重试"}") }
+            .onFailure { message(context.getString(R.string.unable_to_start_installation,
+                it.message?.let { error -> io.github.xblocker.i18n.LocalizedText.resolve(context, error) }
+                    ?: context.getString(R.string.please_try_again))) }
     }
     private suspend fun refresh() {
         val next = withContext(Dispatchers.IO) {
@@ -218,7 +223,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val result = withContext(Dispatchers.IO) { CloudSync.sync(repo) }
             refresh()
-            mutable.value = mutable.value.copy(syncing = false, message = if (result.isSuccess) "云端词库已更新" else repo.syncError())
+            mutable.value = mutable.value.copy(syncing = false, message = if (result.isSuccess) context.getString(R.string.cloud_rules_updated) else io.github.xblocker.i18n.LocalizedText.resolve(context, repo.syncError()))
         }
     }
     fun message(text: String) { mutable.value = mutable.value.copy(message = text) }
@@ -237,7 +242,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         runCatching {
             if (!enabled) app.getSystemService(android.app.NotificationManager::class.java)
                 ?.cancel(io.github.xblocker.fluid.FluidStatus.CAPSULE_ID)
-        }.onFailure { message("实时状态通知更新失败：${it.message?.take(80)}") }
+        }.onFailure { message(context.getString(R.string.unable_to_update_live_status_notification, it.message?.take(80))) }
         refresh()
         if (enabled) runCatching { evaluateScopePrompt() }
     } }
@@ -247,22 +252,22 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         runCatching {
             if (!enabled) app.getSystemService(android.app.NotificationManager::class.java)
                 ?.cancel(io.github.xblocker.fluid.FocusStatus.NOTIFICATION_ID)
-        }.onFailure { message("焦点通知更新失败：${it.message?.take(80)}") }
+        }.onFailure { message(context.getString(R.string.unable_to_update_focus_notification, it.message?.take(80))) }
         refresh()
     } }
     fun clearHistory() { viewModelScope.launch { withContext(Dispatchers.IO) { repo.clearHistory() }; refresh() } }
     fun saveText(kind: String, text: String): Boolean {
-        if (text.length > 64_000) { message("内容不能超过 64,000 字符"); return false }
-        if (kind == "白名单") {
+        if (text.length > 64_000) { message(context.getString(R.string.content_cannot_exceed_64_000_characters)); return false }
+        if (kind == "whitelist") {
             val handles = text.lineSequence().map(RuleParser::handle).filter { it.isNotEmpty() }.toSet()
-            if (handles.any { !it.matches(Regex("[a-z0-9_]{1,15}")) }) { message("请每行填写一个有效的 @用户名"); return false }
+            if (handles.any { !it.matches(Regex("[a-z0-9_]{1,15}")) }) { message(context.getString(R.string.enter_one_valid_username_per_line)); return false }
             update { it.copy(whitelist = handles) }
         } else {
             val check = RuleEngine(FilterSettings(cloudEnabled = false, customRules = text), "")
-            if (check.rejected.isNotEmpty()) { message("未保存：${check.rejected.first().reason}"); return false }
+            if (check.rejected.isNotEmpty()) { message(context.getString(R.string.not_saved, io.github.xblocker.i18n.LocalizedText.resolve(context, check.rejected.first().reason))); return false }
             update { it.copy(customRules = text) }
         }
-        message("已保存，X 中约 5 秒后生效")
+        message(context.getString(R.string.saved_changes_take_effect_in_x_in))
         return true
     }
 }

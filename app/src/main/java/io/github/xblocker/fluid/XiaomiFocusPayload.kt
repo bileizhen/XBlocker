@@ -18,7 +18,7 @@ internal object XiaomiFocusPayload {
         JSONObject(param).getJSONObject("param_v2").optString("business") == BUSINESS
     }.getOrDefault(false)
 
-    fun create(protocolVersion: Int, blocked: Long, tweets: Long): JSONObject? {
+    fun create(protocolVersion: Int, blocked: Long, tweets: Long, text: NotificationText = NotificationText()): JSONObject? {
         if (protocolVersion < 2) return null
         val removed = blocked.coerceAtLeast(0)
         val total = maxOf(tweets, removed)
@@ -31,12 +31,12 @@ internal object XiaomiFocusPayload {
             .put("islandFirstFloat", false)
             .put("enableFloat", false)
             .put("filterWhenNoPermission", false)
-            .put("ticker", "已拦 ${compactCount(removed)}")
-            .put("aodTitle", "XBlocker · 已拦截 $removed 条")
+            .put("ticker", text.short.format(compactCount(removed)))
+            .put("aodTitle", text.total.format(removed))
             .put("baseInfo", JSONObject()
                 .put("type", 2)
-                .put("title", "已拦截 $removed / $total 条")
-                .put("content", "XBlocker · 本轮拦截占比 $percent%"))
+                .put("title", text.fraction.format(removed, total))
+                .put("content", text.percent.format(percent)))
             // Type 1 uses the launcher icon and works on light and dark cards.
             .put("picInfo", JSONObject().put("type", 1))
             .put("progressInfo", JSONObject()
@@ -51,7 +51,7 @@ internal object XiaomiFocusPayload {
                     .put("imageTextInfoLeft", JSONObject()
                         .put("type", 1)
                         .put("picInfo", icon())
-                        .put("textInfo", JSONObject().put("title", "已拦")))
+                        .put("textInfo", JSONObject().put("title", text.label)))
                     .put("textInfo", JSONObject()
                         .put("title", compactCount(removed))
                         .put("narrowFont", true)))
@@ -66,7 +66,7 @@ internal object XiaomiFocusPayload {
     internal fun compactCount(count: Long): String = when {
         count < 1_000 -> count.coerceAtLeast(0).toString()
         count < 10_000 -> "${count / 1_000}.${count % 1_000 / 100}k"
-        count < 1_000_000 -> "${count / 10_000}万"
-        else -> "99万+"
+        count < 1_000_000 -> "${count / 1_000}k"
+        else -> "1M+"
     }
 }

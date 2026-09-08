@@ -2,6 +2,8 @@
 // XBlocker: local state/actions, same theme groups and scale range, API guards.
 package io.github.xblocker.ui
 
+import io.github.xblocker.R
+
 import android.os.Build
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListScope
@@ -20,6 +22,7 @@ import kotlin.math.roundToInt
 
 internal fun LazyListScope.appearanceItems(state: UiState, vm: MainViewModel) {
     item {
+        val resources = androidx.compose.ui.platform.LocalResources.current
         val options = state.appearance
         val monet = state.colorMode >= 3
         Spacer(Modifier.height(32.dp))
@@ -30,35 +33,35 @@ internal fun LazyListScope.appearanceItems(state: UiState, vm: MainViewModel) {
         )
         Spacer(Modifier.height(72.dp))
         TabRow(
-            tabs = listOf("跟随系统", "浅色", "深色"),
+            tabs = listOf(resources.getString(R.string.follow_system), resources.getString(R.string.light), resources.getString(R.string.dark)),
             selectedTabIndex = state.colorMode % 3,
             onTabSelected = { vm.setColorMode(it + if (monet) 3 else 0) },
             height = 48.dp,
         )
         Card(Modifier.padding(top = 12.dp).fillMaxWidth()) {
             SuperSwitch(
-                title = "启用 Monet 颜色", checked = monet,
+                title = resources.getString(R.string.use_monet_colors), checked = monet,
                 enabled = Build.VERSION.SDK_INT >= 31,
-                summary = if (Build.VERSION.SDK_INT < 31) "需要 Android 12 或更高版本" else null,
+                summary = if (Build.VERSION.SDK_INT < 31) resources.getString(R.string.requires_android_12_or_later) else null,
                 startAction = { PreferenceIcon(Icons.Rounded.Wallpaper) },
                 onCheckedChange = { vm.setColorMode(state.colorMode % 3 + if (it) 3 else 0) },
             )
         }
         Card(Modifier.padding(top = 12.dp).fillMaxWidth()) {
             SuperSwitch(
-                title = "模糊", summary = if (Build.VERSION.SDK_INT >= 33) "启用顶栏和底栏的模糊效果" else "需要 Android 13 或更高版本",
+                title = resources.getString(R.string.blur), summary = if (Build.VERSION.SDK_INT >= 33) resources.getString(R.string.blur_the_top_and_bottom_bars) else resources.getString(R.string.requires_android_13_or_later),
                 checked = options.blur, enabled = Build.VERSION.SDK_INT >= 33,
                 startAction = { PreferenceIcon(Icons.Rounded.BlurOn) },
                 onCheckedChange = { vm.setAppearance(options.copy(blur = it)) },
             )
             SuperSwitch(
-                title = "悬浮底栏", summary = "使用 Apple 风格的悬浮底栏",
+                title = resources.getString(R.string.floating_bottom_bar), summary = resources.getString(R.string.use_an_apple_style_floating_bottom_bar),
                 checked = options.floatingBar,
                 startAction = { PreferenceIcon(Icons.Rounded.CallToAction) },
                 onCheckedChange = { vm.setAppearance(options.copy(floatingBar = it)) },
             )
             SuperSwitch(
-                title = "液态玻璃", summary = "启用悬浮底栏的液态玻璃效果",
+                title = resources.getString(R.string.liquid_glass), summary = resources.getString(R.string.apply_liquid_glass_to_the_floating_bottom),
                 checked = options.liquidGlass, enabled = options.floatingBar && options.blur && Build.VERSION.SDK_INT >= 33,
                 startAction = { PreferenceIcon(Icons.Rounded.WaterDrop) },
                 onCheckedChange = { vm.setAppearance(options.copy(liquidGlass = it)) },
@@ -66,7 +69,7 @@ internal fun LazyListScope.appearanceItems(state: UiState, vm: MainViewModel) {
         }
         Card(Modifier.padding(top = 12.dp).fillMaxWidth()) {
             SuperSwitch(
-                title = "预测性返回手势", summary = "启用对预测性返回手势的支持",
+                title = resources.getString(R.string.predictive_back_gesture), summary = resources.getString(R.string.enable_predictive_back_gesture_support),
                 checked = options.predictiveBack, enabled = Build.VERSION.SDK_INT >= 34,
                 startAction = { PreferenceIcon(Icons.AutoMirrored.Rounded.MenuOpen) },
                 onCheckedChange = { vm.setAppearance(options.copy(predictiveBack = it)) },
@@ -74,7 +77,7 @@ internal fun LazyListScope.appearanceItems(state: UiState, vm: MainViewModel) {
             var sliderValue by remember(options.scale) { mutableFloatStateOf(options.scale) }
             var showScaleDialog by rememberSaveable { mutableStateOf(false) }
             BasicComponent(
-                title = "界面缩放", summary = "调整全局显示比例",
+                title = resources.getString(R.string.display_scale), summary = resources.getString(R.string.adjust_the_overall_interface_scale),
                 startAction = { PreferenceIcon(Icons.Rounded.AspectRatio) },
                 endActions = {
                     Text("${(sliderValue * 100).roundToInt()}%", color = MiuixTheme.colorScheme.onSurfaceVariantActions)
@@ -91,12 +94,12 @@ internal fun LazyListScope.appearanceItems(state: UiState, vm: MainViewModel) {
                     )
                 },
             )
-            OverlayDialog(show = showScaleDialog, title = "界面缩放", summary = "80% - 110%", onDismissRequest = { showScaleDialog = false }) {
+            OverlayDialog(show = showScaleDialog, title = resources.getString(R.string.display_scale), summary = "80% - 110%", onDismissRequest = { showScaleDialog = false }) {
                 var input by remember(showScaleDialog) { mutableStateOf((options.scale * 100).roundToInt().toString()) }
                 TextField(value = input, onValueChange = { if (it.length <= 3 && it.all(Char::isDigit)) input = it }, singleLine = true)
                 Row(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    TextButton("取消", onClick = { showScaleDialog = false }, modifier = Modifier.weight(1f))
-                    TextButton("确定", enabled = input.toIntOrNull() in 80..110, onClick = {
+                    TextButton(resources.getString(R.string.cancel), onClick = { showScaleDialog = false }, modifier = Modifier.weight(1f))
+                    TextButton(resources.getString(R.string.ok), enabled = input.toIntOrNull() in 80..110, onClick = {
                         input.toIntOrNull()?.let { vm.setAppearance(options.copy(scale = it.coerceIn(80, 110) / 100f)) }
                         showScaleDialog = false
                     }, modifier = Modifier.weight(1f))

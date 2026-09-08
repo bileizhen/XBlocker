@@ -1,5 +1,7 @@
 package io.github.xblocker.ui
 
+import io.github.xblocker.R
+
 import android.os.Build
 import java.util.Locale
 
@@ -18,11 +20,11 @@ object ScopeNotice {
         }
     }
 
-    fun label(packageName: String): String = when (packageName) {
-        "com.android.systemui" -> "系统界面（前台胶囊豁免 / 焦点通知）"
-        "com.oplus.systemui.plugins" -> "O+ 系统界面插件（流体云）"
-        "com.oplus.pantanal.ums" -> "Pantanal 服务（流体云）"
-        "com.coloros.assistantscreen" -> "智慧助理（流体云）"
+    fun label(context: android.content.Context, packageName: String): String = when (packageName) {
+        "com.android.systemui" -> context.getString(R.string.system_ui_foreground_capsule_exemption_focus_notifications)
+        "com.oplus.systemui.plugins" -> context.getString(R.string.o_system_ui_plugins_fluid_cloud)
+        "com.oplus.pantanal.ums" -> context.getString(R.string.pantanal_service_fluid_cloud)
+        "com.coloros.assistantscreen" -> context.getString(R.string.smart_assistant_fluid_cloud)
         else -> packageName
     }
 }

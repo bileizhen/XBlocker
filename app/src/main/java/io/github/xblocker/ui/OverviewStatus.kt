@@ -2,6 +2,8 @@
 // XBlocker: real hook/enabled state and filtering statistics, accessible sizing.
 package io.github.xblocker.ui
 
+import io.github.xblocker.R
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircleOutline
@@ -18,6 +20,8 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable
 internal fun OverviewStatus(state: UiState, onHistory: () -> Unit, onRules: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val resources = androidx.compose.ui.platform.LocalResources.current
     val colors = MiuixTheme.colorScheme
     val hooked = state.diagnostics.optInt("hooks") > 0
     // A recent marker means the hook runs in X but the report bridge is down; without any
@@ -53,26 +57,26 @@ internal fun OverviewStatus(state: UiState, onHistory: () -> Unit, onRules: () -
                 }
                 Column(Modifier.fillMaxWidth().padding(16.dp)) {
                     Text(
-                        when { !state.settings.enabled -> "过滤已暂停"; bridgeBlocked -> "回报通道受阻"; active -> "过滤工作中"; hooked -> "模块已加载"; else -> "等待 X 连接" },
+                        when { !state.settings.enabled -> resources.getString(R.string.filtering_paused); bridgeBlocked -> resources.getString(R.string.reporting_blocked); active -> resources.getString(R.string.filtering_active); hooked -> resources.getString(R.string.module_loaded); else -> resources.getString(R.string.waiting_for_x) },
                         fontSize = 20.sp, fontWeight = FontWeight.SemiBold,
                         color = colors.onSurface,
                     )
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        if (bridgeBlocked) "检查 HMA-OSS 隐藏规则\n详见设置 → 运行诊断"
+                        if (bridgeBlocked) resources.getString(R.string.check_hma_oss_hiding_rules_nsee_settings)
                         else if (hooked) "X ${state.diagnostics.optString("version")}"
-                        else if (markerFresh) "模块已在 X 中运行，回报通道受阻"
-                        else "1. 在 LSPosed 启用模块并勾选 X\n2. 强行停止 X 后重新打开",
+                        else if (markerFresh) resources.getString(R.string.module_is_running_in_x_but_reporting)
+                        else resources.getString(R.string.instructions_1_enable_the_module_and_select_x),
                         fontSize = 14.sp, fontWeight = FontWeight.Medium,
                         color = colors.onSurface,
                     )
-                    if (!hooked && !markerFresh) Text("勾选作用域仅对新启动的 X 进程生效", fontSize = 12.sp, color = colors.onSurfaceVariantSummary)
+                    if (!hooked && !markerFresh) Text(resources.getString(R.string.scope_changes_apply_only_to_newly_started), fontSize = 12.sp, color = colors.onSurfaceVariantSummary)
                 }
             }
         }
         Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            MetricCard("已拦截", state.blocked.toString(), Modifier.weight(1f), onHistory)
-            MetricCard("生效规则", state.engine.count.toString(), Modifier.weight(1f), onRules)
+            MetricCard(resources.getString(R.string.blocked), state.blocked.toString(), Modifier.weight(1f), onHistory)
+            MetricCard(resources.getString(R.string.active_rules), state.engine.count.toString(), Modifier.weight(1f), onRules)
         }
     }
 }

@@ -12,18 +12,18 @@ import java.io.File
 import java.net.HttpURLConnection
 import java.net.URI
 
-enum class UpdateSource(val label: String, private val prefix: String = "") {
-    GITHUB("GitHub 原站"),
-    GH_DPIK_TOP("gh.dpik.top 镜像", "https://gh.dpik.top/"),
+enum class UpdateSource(@androidx.annotation.StringRes val label: Int, private val prefix: String = "") {
+    GITHUB(io.github.xblocker.R.string.source_github),
+    GH_DPIK_TOP(io.github.xblocker.R.string.source_mirror, "https://gh.dpik.top/"),
     ;
 
     fun url(release: AppRelease): String = prefix + release.downloadUrl
 }
 
 /** 0 = stable releases only, 1 = include pre-releases. Persisted as "updateChannel". */
-enum class UpdateChannel(val label: String) {
-    STABLE("正式版"),
-    PRERELEASE("预发布"),
+enum class UpdateChannel(@androidx.annotation.StringRes val label: Int) {
+    STABLE(io.github.xblocker.R.string.stable),
+    PRERELEASE(io.github.xblocker.R.string.pre_release),
 }
 
 sealed interface UpdateDownloadState {

@@ -1,5 +1,7 @@
 package io.github.xblocker.ui
 
+import io.github.xblocker.R
+
 import android.Manifest
 import android.content.Intent
 import android.net.Uri
@@ -70,11 +72,13 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.ThemeController
 import top.yukonga.miuix.kmp.theme.darkColorScheme
 import top.yukonga.miuix.kmp.theme.lightColorScheme
-import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.Locale
 
 class MainActivity : ComponentActivity() {
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(io.github.xblocker.i18n.AppLanguage.context(newBase))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -121,6 +125,7 @@ private fun XBlockerApp(initialColorMode: Int, vm: MainViewModel = viewModel()) 
         isDark = darkTheme,
     )
     val context = LocalContext.current
+    val resources = androidx.compose.ui.platform.LocalResources.current
     LaunchedEffect(darkTheme) {
         val window = (context as? ComponentActivity)?.window ?: return@LaunchedEffect
         WindowCompat.getInsetsController(window, window.decorView).apply {
@@ -137,7 +142,7 @@ private fun XBlockerApp(initialColorMode: Int, vm: MainViewModel = viewModel()) 
     }
 }
 
-private fun date(time: Long): String = if (time == 0L) "尚未同步 · 使用内置词库" else SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(Date(time))
+private fun date(resources: android.content.res.Resources, time: Long): String = if (time == 0L) resources.getString(R.string.not_synced_using_bundled_rules) else java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.SHORT, resources.configuration.locales[0]).format(Date(time))
 
 @Composable
 private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
@@ -146,6 +151,7 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
     val updateDownload by vm.updateDownload.collectAsStateWithLifecycle()
     val scopePrompt by vm.scopePrompt.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val resources = androidx.compose.ui.platform.LocalResources.current
     val scope = rememberCoroutineScope()
     var selectedPage by rememberSaveable { mutableIntStateOf(0) }
     // SukiSU MainActivity/NavDisplay pattern: main tabs share one root entry;
@@ -162,17 +168,17 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
     var showLogDialog by rememberSaveable { mutableStateOf(false) }
     var selectedUpdateSource by rememberSaveable { mutableStateOf(UpdateSource.GITHUB.name) }
     var pendingNotificationTarget by rememberSaveable { mutableStateOf("") }
-    val pages = listOf("概览", "规则", "记录", "设置", "主题设置", "关于", "运行诊断")
+    val pages = listOf(resources.getString(R.string.overview), resources.getString(R.string.rules), resources.getString(R.string.history), resources.getString(R.string.settings), resources.getString(R.string.appearance), resources.getString(R.string.about), resources.getString(R.string.diagnostics))
     val icons = listOf(Icons.Rounded.Cottage, Icons.AutoMirrored.Rounded.Rule, Icons.Rounded.History, Icons.Rounded.Settings)
-    fun openUrl(url: String) { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }.onFailure { vm.message("没有可用的应用打开此链接") } }
-    fun edit(kind: String) { editor = kind; editorText = if (kind == "白名单") state.settings.whitelist.joinToString("\n") else state.settings.customRules }
+    fun openUrl(url: String) { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }.onFailure { vm.message(resources.getString(R.string.no_app_available_to_open_this_link)) } }
+    fun edit(kind: String) { editor = kind; editorText = if (kind == "whitelist") state.settings.whitelist.joinToString("\n") else state.settings.customRules }
     val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         val target = pendingNotificationTarget
         pendingNotificationTarget = ""
         if (granted) {
             if (target == "native") vm.setFluidCloud(true)
             if (target == "focus") vm.setFocusNotification(true)
-        } else vm.message("需要通知权限才能显示实时拦截状态")
+        } else vm.message(resources.getString(R.string.notification_permission_is_required_to_show_live))
     }
     fun toggleFluidCloud(on: Boolean) {
         if (!on) { vm.setFluidCloud(false); return }
@@ -195,17 +201,17 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
                     context.contentResolver.openInputStream(uri)!!.bufferedReader().use { reader ->
                         val chars = CharArray(64_001); var count = 0
                         while (count < chars.size) { val n = reader.read(chars, count, chars.size - count); if (n < 0) break; count += n }
-                        require(count <= 64_000) { "文件超过 64,000 字符" }; String(chars, 0, count)
+                        require(count <= 64_000) { resources.getString(R.string.file_exceeds_64_000_characters) }; String(chars, 0, count)
                     }
                 }
-                editor = "自定义词库"; editorText = text
-            }.onFailure { vm.message("导入失败：${it.message}") }
+                editor = "custom"; editorText = text
+            }.onFailure { vm.message(resources.getString(R.string.import_failed, it.message)) }
         }
     }
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
         if (uri != null) scope.launch {
             runCatching { withContext(Dispatchers.IO) { context.contentResolver.openOutputStream(uri, "wt")!!.bufferedWriter().use { it.write(state.settings.customRules) } } }
-                .onSuccess { vm.message("自定义词库已导出") }.onFailure { vm.message("导出失败：${it.message}") }
+                .onSuccess { vm.message(resources.getString(R.string.custom_rules_exported)) }.onFailure { vm.message(resources.getString(R.string.export_failed, it.message)) }
         }
     }
     LaunchedEffect(state.message) {
@@ -231,7 +237,7 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
                     scrollBehavior = scrollBehavior,
                     navigationIcon = {
                         if (page >= 4) IconButton(onClick = { navigateBack() }) {
-                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, "返回设置", tint = MiuixTheme.colorScheme.onSurface)
+                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, resources.getString(R.string.back_settings), tint = MiuixTheme.colorScheme.onSurface)
                         }
                     },
                 )
@@ -275,7 +281,7 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
             }
         },
     ) { padding ->
-        if (!state.ready) Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { Text("正在读取配置…") }
+        if (!state.ready) Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { Text(resources.getString(R.string.loading_configuration)) }
         else Box(Modifier.fillMaxSize()
             .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
             .then(if (options.floatingBar && glassEnabled) Modifier.layerBackdrop(glassBackdrop) else Modifier)) {
@@ -292,93 +298,93 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
                         item { OverviewStatus(state, onHistory = { selectedPage = 2 }, onRules = { selectedPage = 1 }) }
                         item {
                             Card {
-                                SuperSwitch(title = "启用过滤", summary = "在 X 中隐藏匹配的垃圾内容", checked = state.settings.enabled, onCheckedChange = { value -> vm.update { it.copy(enabled = value) } })
-                                BasicComponent(title = "数据入口", summary = state.diagnostics.optString("adapter").ifEmpty { "等待 X 启动" })
-                                BasicComponent(title = "本次 X 进程", summary = "解析 ${state.diagnostics.optLong("responses")} 次 · 移除 ${state.diagnostics.optLong("blocked")} 条")
-                                BasicComponent(title = "系统", summary = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) · ${Build.MODEL}")
+                                SuperSwitch(title = resources.getString(R.string.enable_filtering), summary = resources.getString(R.string.hide_matching_unwanted_content_in_x), checked = state.settings.enabled, onCheckedChange = { value -> vm.update { it.copy(enabled = value) } })
+                                BasicComponent(title = resources.getString(R.string.data_adapter), summary = state.diagnostics.optString("adapter").ifEmpty { resources.getString(R.string.waiting_for_x_to_start) })
+                                BasicComponent(title = resources.getString(R.string.current_x_process), summary = resources.getString(R.string.parsed_removed, state.diagnostics.optLong("responses"), state.diagnostics.optLong("blocked")))
+                                BasicComponent(title = resources.getString(R.string.system), summary = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) · ${Build.MODEL}")
                             }
                         }
                         item {
                             Card {
-                                BasicComponent(title = "拦截记录", summary = "最近 ${state.history.size} 条 · 最多保留 200 条", onClick = { selectedPage = 2 }, endActions = { Text("›", fontSize = 24.sp, color = MiuixTheme.colorScheme.onSurfaceVariantSummary) })
-                                BasicComponent(title = "云端词库", summary = date(state.lastSync), onClick = { selectedPage = 1 }, endActions = { Text("›", fontSize = 24.sp, color = MiuixTheme.colorScheme.onSurfaceVariantSummary) })
+                                BasicComponent(title = resources.getString(R.string.block_history), summary = resources.getString(R.string.latest_records_up_to_200_stored, state.history.size), onClick = { selectedPage = 2 }, endActions = { Text("›", fontSize = 24.sp, color = MiuixTheme.colorScheme.onSurfaceVariantSummary) })
+                                BasicComponent(title = resources.getString(R.string.cloud_rules), summary = date(resources, state.lastSync), onClick = { selectedPage = 1 }, endActions = { Text("›", fontSize = 24.sp, color = MiuixTheme.colorScheme.onSurfaceVariantSummary) })
                             }
                         }
                         item {
                             Card {
-                                BasicComponent(title = "打开 X", summary = "开始浏览，垃圾内容将被自动隐藏", onClick = {
+                                BasicComponent(title = resources.getString(R.string.open_x), summary = resources.getString(R.string.start_browsing_to_automatically_hide_unwanted_content), onClick = {
                                     val launch = context.packageManager.getLaunchIntentForPackage("com.twitter.android")
-                                    if (launch != null) context.startActivity(launch) else vm.message("未安装 X")
+                                    if (launch != null) context.startActivity(launch) else vm.message(resources.getString(R.string.x_is_not_installed))
                                 }, endActions = { Text("›", fontSize = 24.sp, color = MiuixTheme.colorScheme.onSurfaceVariantSummary) })
                             }
                         }
-                        if (state.syncError.isNotBlank()) item { Notice(state.syncError) }
+                        if (state.syncError.isNotBlank()) item { Notice(io.github.xblocker.i18n.LocalizedText.resolve(context, state.syncError)) }
                     }
                     1 -> {
-                        item { SmallTitle("云端词库", insideMargin = sectionTitleMargin) }
+                        item { SmallTitle(resources.getString(R.string.cloud_rules), insideMargin = sectionTitleMargin) }
                         item {
                             Card {
-                                SuperSwitch(title = "使用云端规则", summary = "amahteru / x-comment-blocker", checked = state.settings.cloudEnabled, onCheckedChange = { value -> vm.update { it.copy(cloudEnabled = value) } })
-                                BasicComponent(title = "最近同步", summary = date(state.lastSync), endActions = {
-                                    TextButton(if (state.syncing) "同步中…" else "同步", onClick = vm::sync, enabled = !state.syncing && state.settings.cloudEnabled)
+                                SuperSwitch(title = resources.getString(R.string.use_cloud_rules), summary = "amahteru / x-comment-blocker", checked = state.settings.cloudEnabled, onCheckedChange = { value -> vm.update { it.copy(cloudEnabled = value) } })
+                                BasicComponent(title = resources.getString(R.string.last_sync), summary = date(resources, state.lastSync), endActions = {
+                                    TextButton(if (state.syncing) resources.getString(R.string.syncing) else resources.getString(R.string.sync), onClick = vm::sync, enabled = !state.syncing && state.settings.cloudEnabled)
                                 })
                             }
                         }
                         item {
                             Card {
                                 state.engine.categories.forEach { (category, count) ->
-                                    SuperSwitch(title = category, summary = "$count 条规则", checked = category !in state.settings.disabledCategories,
+                                    SuperSwitch(title = io.github.xblocker.i18n.LocalizedText.resolve(context, category), summary = resources.getString(R.string.rule_count, count), checked = category !in state.settings.disabledCategories,
                                         enabled = state.settings.cloudEnabled, onCheckedChange = { on -> vm.update { it.copy(disabledCategories = if (on) it.disabledCategories - category else it.disabledCategories + category) } })
                                 }
                             }
                         }
-                        if (state.syncError.isNotBlank()) item { Notice(state.syncError) }
+                        if (state.syncError.isNotBlank()) item { Notice(io.github.xblocker.i18n.LocalizedText.resolve(context, state.syncError)) }
                         if (state.engine.rejected.isNotEmpty()) item {
-                            Card { BasicComponent(title = "${state.engine.rejected.size} 条规则未启用", summary = "查看当前不兼容的正则规则", onClick = { showRejected = true }) }
+                            Card { BasicComponent(title = resources.getString(R.string.disabled_rules, state.engine.rejected.size), summary = resources.getString(R.string.view_unsupported_regular_expressions), onClick = { showRejected = true }) }
                         }
-                        item { SmallTitle("我的规则", insideMargin = sectionTitleMargin) }
+                        item { SmallTitle(resources.getString(R.string.my_rules), insideMargin = sectionTitleMargin) }
                         item {
                             Card {
-                                BasicComponent(title = "自定义词库", summary = "${RuleParser.parse(state.settings.customRules).size} 条 · 每行一个词或 /正则/i", onClick = { edit("自定义词库") }, endActions = { Text("编辑 ›") })
-                                BasicComponent(title = "白名单", summary = "${state.settings.whitelist.size} 个账号 · 按 @用户名精确匹配", onClick = { edit("白名单") }, endActions = { Text("编辑 ›") })
-                                BasicComponent(title = "规则测试", summary = "输入内容，查看是否命中及命中原因", onClick = { preview = true }, endActions = { Text("测试 ›") })
+                                BasicComponent(title = resources.getString(R.string.custom_rules), summary = resources.getString(R.string.rules_one_keyword_or_regex_i_per, RuleParser.parse(state.settings.customRules).size), onClick = { edit("custom") }, endActions = { Text(resources.getString(R.string.edit)) })
+                                BasicComponent(title = resources.getString(R.string.allowlist), summary = resources.getString(R.string.accounts_exact_username_matching, state.settings.whitelist.size), onClick = { edit("whitelist") }, endActions = { Text(resources.getString(R.string.edit)) })
+                                BasicComponent(title = resources.getString(R.string.test_rules), summary = resources.getString(R.string.enter_content_to_see_whether_and_why), onClick = { preview = true }, endActions = { Text(resources.getString(R.string.test)) })
                             }
                         }
                         item { Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            TextButton("导入词库", onClick = { import.launch(arrayOf("text/*", "application/octet-stream")) }, modifier = Modifier.weight(1f))
-                            TextButton("导出词库", onClick = { export.launch("xblocker-keywords.txt") }, modifier = Modifier.weight(1f))
+                            TextButton(resources.getString(R.string.import_rules), onClick = { import.launch(arrayOf("text/*", "application/octet-stream")) }, modifier = Modifier.weight(1f))
+                            TextButton(resources.getString(R.string.export_rules), onClick = { export.launch("xblocker-keywords.txt") }, modifier = Modifier.weight(1f))
                         } }
-                        item { Notice("云端词库每 6 小时尝试更新，时间受系统后台调度影响。导入后先预览编辑，再保存。") }
+                        item { Notice(resources.getString(R.string.cloud_rules_attempt_to_update_every_6)) }
                     }
                     2 -> {
                         item { Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                            SmallTitle("最近 ${state.history.size} 条 / 最多 200 条", insideMargin = sectionTitleMargin)
-                            TextButton("清空", onClick = { confirmClear = true }, enabled = state.history.isNotEmpty())
+                            SmallTitle(resources.getString(R.string.latest_records_200_maximum, state.history.size), insideMargin = sectionTitleMargin)
+                            TextButton(resources.getString(R.string.clear), onClick = { confirmClear = true }, enabled = state.history.isNotEmpty())
                         } }
                         if (state.history.isEmpty()) item {
                             Card(insideMargin = PaddingValues(28.dp)) {
-                                Text("还没有拦截记录", fontSize = 20.sp, fontWeight = FontWeight.Medium)
+                                Text(resources.getString(R.string.no_block_history_yet), fontSize = 20.sp, fontWeight = FontWeight.Medium)
                                 Spacer(Modifier.height(10.dp))
-                                Text("启用模块后浏览 X，命中规则的条目会出现在这里。记录不保存推文正文。", fontSize = 14.sp, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+                                Text(resources.getString(R.string.browse_x_with_the_module_enabled_to), fontSize = 14.sp, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
                             }
                         }
                         items(state.history) { event ->
                             Card(insideMargin = PaddingValues(20.dp)) {
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Text(event.optString("handle").let { if (it.isEmpty()) "推广条目" else "@$it" }, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
-                                    Text(date(event.optLong("time")), fontSize = 12.sp, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+                                    Text(event.optString("handle").let { if (it.isEmpty()) resources.getString(R.string.promoted_entry) else "@$it" }, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                                    Text(date(resources, event.optLong("time")), fontSize = 12.sp, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
                                 }
                                 Spacer(Modifier.height(6.dp))
-                                Text("${event.optString("category")} · ${event.optString("reason")}", color = MiuixTheme.colorScheme.primary, fontSize = 13.sp)
+                                Text("${io.github.xblocker.i18n.LocalizedText.resolve(context, event.optString("category"))} · ${io.github.xblocker.i18n.LocalizedText.resolve(context, event.optString("reason"))}", color = MiuixTheme.colorScheme.primary, fontSize = 13.sp)
                                 Spacer(Modifier.height(6.dp))
                                 Text(event.optString("rule"), fontSize = 14.sp, maxLines = 3)
                                 val handle = event.optString("handle")
-                                if (handle.isNotBlank()) TextButton(if (handle.lowercase() in state.settings.whitelist) "已在白名单" else "加入白名单", enabled = handle.lowercase() !in state.settings.whitelist,
-                                    onClick = { vm.update { it.copy(whitelist = it.whitelist + RuleParser.handle(handle)) }; vm.message("已加入白名单") }, modifier = Modifier.padding(top = 12.dp))
+                                if (handle.isNotBlank()) TextButton(if (handle.lowercase() in state.settings.whitelist) resources.getString(R.string.already_allowlisted) else resources.getString(R.string.add_to_allowlist), enabled = handle.lowercase() !in state.settings.whitelist,
+                                    onClick = { vm.update { it.copy(whitelist = it.whitelist + RuleParser.handle(handle)) }; vm.message(resources.getString(R.string.added_to_allowlist)) }, modifier = Modifier.padding(top = 12.dp))
                             }
                         }
                     }
-                    3 -> settingsItems(
+                    3 -> settingsItems(context, resources,
                         state = state, vm = vm,
                         onOpenTheme = { if (backStack.size == 1) backStack = backStack + 4 },
                         onOpenDiagnostics = { if (backStack.size == 1) backStack = backStack + 6 },
@@ -390,32 +396,32 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
                     6 -> {
                         item {
                             Card {
-                                BasicComponent(title = "X 连接", summary = when {
-                                    state.diagnostics.optLong("lastSeen") != 0L -> "最近回报 ${date(state.diagnostics.optLong("lastSeen"))} · PID ${state.diagnostics.optInt("pid")}"
-                                    state.marker.optLong("lastSeen") != 0L -> "未收到回报 · 激活标记 ${date(state.marker.optLong("lastSeen"))}"
-                                    else -> "尚未收到模块回报"
+                                BasicComponent(title = resources.getString(R.string.x_connection), summary = when {
+                                    state.diagnostics.optLong("lastSeen") != 0L -> resources.getString(R.string.last_report_pid, date(resources, state.diagnostics.optLong("lastSeen")), state.diagnostics.optInt("pid"))
+                                    state.marker.optLong("lastSeen") != 0L -> resources.getString(R.string.no_report_received_activation_marker, date(resources, state.marker.optLong("lastSeen")))
+                                    else -> resources.getString(R.string.no_module_report_received_yet)
                                 })
-                                BasicComponent(title = "数据入口", summary = state.diagnostics.optString("adapter").ifEmpty { "等待 X 启动" })
-                                BasicComponent(title = "本次 X 进程", summary = "解析 ${state.diagnostics.optLong("responses")} 次 · 识别时间线 ${state.diagnostics.optLong("seen")} 次 · 移除 ${state.diagnostics.optLong("filtered")} 条")
-                                if (state.diagnostics.optString("error").isNotBlank()) BasicComponent(title = "适配提示", summary = state.diagnostics.optString("error"))
-                                if (state.marker.optLong("lastSeen") != 0L) BasicComponent(title = "激活标记", summary = buildString {
+                                BasicComponent(title = resources.getString(R.string.data_adapter), summary = state.diagnostics.optString("adapter").ifEmpty { resources.getString(R.string.waiting_for_x_to_start) })
+                                BasicComponent(title = resources.getString(R.string.current_x_process), summary = resources.getString(R.string.parsed_timelines_removed, state.diagnostics.optLong("responses"), state.diagnostics.optLong("seen"), state.diagnostics.optLong("filtered")))
+                                if (state.diagnostics.optString("error").isNotBlank()) BasicComponent(title = resources.getString(R.string.compatibility_note), summary = io.github.xblocker.i18n.LocalizedText.resolve(context, state.diagnostics.optString("error")))
+                                if (state.marker.optLong("lastSeen") != 0L) BasicComponent(title = resources.getString(R.string.activation_marker), summary = buildString {
                                     append(when (state.marker.optString("phase")) {
-                                        "started" -> "已启动"
-                                        "init-failed" -> "初始化失败"
-                                        "bridge-failed" -> if (state.marker.optBoolean("fallback")) "回报受阻 · 共享配置回退生效" else "回报受阻 · 无可用配置来源"
+                                        "started" -> resources.getString(R.string.started)
+                                        "init-failed" -> resources.getString(R.string.initialization_failed)
+                                        "bridge-failed" -> if (state.marker.optBoolean("fallback")) resources.getString(R.string.reporting_blocked_shared_configuration_fallback_active) else resources.getString(R.string.reporting_blocked_no_configuration_source_available)
                                         else -> state.marker.optString("phase")
                                     })
-                                    append(" · 首次 ${date(state.marker.optLong("firstSeen"))}")
+                                    append(resources.getString(R.string.first_seen, date(resources, state.marker.optLong("firstSeen"))))
                                     if (state.marker.optString("version").isNotBlank()) append(" · X ${state.marker.optString("version")}")
                                     if (state.marker.optString("error").isNotBlank()) append(" · ${state.marker.optString("error").take(120)}")
                                 })
                             }
                         }
-                        if (state.diagnostics.optLong("lastSeen") == 0L) item { Notice("未收到回报时依次检查：LSPosed 中已启用模块并勾选 X 作用域；更改后强行停止 X 再打开。上方激活标记也为空时，说明模块未被框架加载。") }
-                        item { Notice("HMA-OSS / 应用隐藏：请让 X 能看见 XBlocker。在 HMA-OSS 中检查 X 的隐藏规则、模板及 Xposed 模块预设，放行 XBlocker（io.github.bileizhen.xblocker），或关闭针对 X 的应用隐藏。修改后先打开 XBlocker，再强行停止并重新打开 X，刷新回复列表。") }
-                        item { Notice("模块已加载却显示“回报受阻”或 Unknown authority 时，请优先检查应用隐藏设置。未收到回报时，界面的 0 次不代表实际未过滤；请结合回复是否被隐藏判断。") }
-                        item { Notice("仅保留 XBlocker 后台时才能拦截：请在系统应用管理中允许 XBlocker 自启动 / 关联启动，再打开一次 XBlocker，并强行停止后重新打开 X 复测。已有用户开启自启动后恢复正常，无需长期锁定后台卡片。") }
-                        item { Notice("更换 X 版本后，请检查数据入口和时间线计数。已经缓存的内容需重新刷新；开关和规则修改约 5 秒生效。") }
+                        if (state.diagnostics.optLong("lastSeen") == 0L) item { Notice(resources.getString(R.string.if_no_report_is_received_enable_the)) }
+                        item { Notice(resources.getString(R.string.hma_oss_app_hiding_allow_x_to)) }
+                        item { Notice(resources.getString(R.string.if_the_module_is_loaded_but_shows)) }
+                        item { Notice(resources.getString(R.string.if_filtering_works_only_while_xblocker_remains)) }
+                        item { Notice(resources.getString(R.string.after_changing_the_x_version_check_the)) }
                     }
                     4 -> appearanceItems(state, vm)
                 }
@@ -437,7 +443,7 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
                 entry(4) { pageContent(4, Modifier.fillMaxSize()) }
                 entry(5) {
                     AboutScreenMiuix(
-                        state = remember { AboutUiState() },
+                        state = AboutUiState(context),
                         actions = AboutScreenActions(onBack = ::navigateBack, onOpenLink = { link ->
                             when (link) {
                                 "xblocker:licenses" -> if (backStack.last() == 5) backStack = backStack + 7
@@ -463,46 +469,46 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
         )
         // Keep overlays outside the entries: a transition must not mount each
         // dialog twice, and dismissing one must take precedence over popping a page.
-        SuperDialog(show = editor.isNotEmpty(), title = editor, onDismissRequest = { editor = "" }) {
+        SuperDialog(show = editor.isNotEmpty(), title = if (editor == "whitelist") resources.getString(R.string.allowlist) else resources.getString(R.string.custom_rules), onDismissRequest = { editor = "" }) {
             Column(Modifier.imePadding().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text(if (editor == "白名单") "每行一个 @用户名，不填写昵称。" else "每行一个关键词，或 /正则表达式/i。保存会替换现有自定义词库。", fontSize = 14.sp)
-                TextField(value = editorText, onValueChange = { if (it.length <= 64_001) editorText = it }, label = "输入规则", minLines = 4, maxLines = 8, modifier = Modifier.fillMaxWidth())
+                Text(if (editor == "whitelist") resources.getString(R.string.one_username_per_line_not_a_display) else resources.getString(R.string.one_keyword_or_regular_expression_i_per), fontSize = 14.sp)
+                TextField(value = editorText, onValueChange = { if (it.length <= 64_001) editorText = it }, label = resources.getString(R.string.enter_rules), minLines = 4, maxLines = 8, modifier = Modifier.fillMaxWidth())
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    TextButton("取消", onClick = { editor = "" }, modifier = Modifier.weight(1f))
-                    TextButton("保存", onClick = { if (vm.saveText(editor, editorText)) editor = "" }, modifier = Modifier.weight(1f))
+                    TextButton(resources.getString(R.string.cancel), onClick = { editor = "" }, modifier = Modifier.weight(1f))
+                    TextButton(resources.getString(R.string.save), onClick = { if (vm.saveText(editor, editorText)) editor = "" }, modifier = Modifier.weight(1f))
                 }
             }
         }
-        SuperDialog(show = showRejected, title = "未启用的规则", summary = "Java 与 JavaScript 正则存在差异；以下规则已跳过。", onDismissRequest = { showRejected = false }) {
+        SuperDialog(show = showRejected, title = resources.getString(R.string.disabled_rules_title), summary = resources.getString(R.string.java_and_javascript_regular_expressions_differ_the), onDismissRequest = { showRejected = false }) {
             Column(Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                state.engine.rejected.forEach { Text("${it.text}\n${it.reason}", fontSize = 13.sp) }
-                TextButton("知道了", onClick = { showRejected = false }, modifier = Modifier.fillMaxWidth())
+                state.engine.rejected.forEach { Text("${it.text}\n${io.github.xblocker.i18n.LocalizedText.resolve(context, it.reason)}", fontSize = 13.sp) }
+                TextButton(resources.getString(R.string.got_it), onClick = { showRejected = false }, modifier = Modifier.fillMaxWidth())
             }
         }
-        SuperDialog(show = confirmClear, title = "清空本地记录？", summary = "同时重置累计拦截数量，规则不受影响。", onDismissRequest = { confirmClear = false }) {
+        SuperDialog(show = confirmClear, title = resources.getString(R.string.clear_local_history), summary = resources.getString(R.string.also_resets_the_cumulative_block_count_rules), onDismissRequest = { confirmClear = false }) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                TextButton("取消", onClick = { confirmClear = false }, modifier = Modifier.weight(1f))
-                TextButton("清空", onClick = { vm.clearHistory(); confirmClear = false }, modifier = Modifier.weight(1f))
+                TextButton(resources.getString(R.string.cancel), onClick = { confirmClear = false }, modifier = Modifier.weight(1f))
+                TextButton(resources.getString(R.string.clear), onClick = { vm.clearHistory(); confirmClear = false }, modifier = Modifier.weight(1f))
             }
         }
         val activePrompt = scopePrompt
-        SuperDialog(show = activePrompt != null, title = "需要启用作用域",
-            summary = if (activePrompt?.serviceConnected == true) "原生超级岛 / 流体云需要以下作用域，点击“去授权”后请在通知栏中处理 LSPosed 的作用域请求："
-            else "原生超级岛 / 流体云需要以下作用域，请在 LSPosed → 模块 → XBlocker 中勾选后重启系统界面：",
+        SuperDialog(show = activePrompt != null, title = resources.getString(R.string.scopes_required),
+            summary = if (activePrompt?.serviceConnected == true) resources.getString(R.string.native_super_island_fluid_cloud_requires_the)
+            else resources.getString(R.string.native_super_island_fluid_cloud_requires_the_124),
             onDismissRequest = vm::dismissScopePrompt) {
             Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                activePrompt?.missing?.forEach { Text("· ${ScopeNotice.label(it)}\n  $it", fontSize = 13.sp) }
-                Text("授权完成后，LSPosed 可能要求重启系统界面或相关系统进程。", fontSize = 13.sp)
+                activePrompt?.missing?.forEach { Text("· ${ScopeNotice.label(context, it)}\n  $it", fontSize = 13.sp) }
+                Text(resources.getString(R.string.after_authorization_lsposed_may_ask_you_to), fontSize = 13.sp)
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    TextButton("暂不", onClick = vm::dismissScopePrompt, modifier = Modifier.weight(1f))
+                    TextButton(resources.getString(R.string.not_now), onClick = vm::dismissScopePrompt, modifier = Modifier.weight(1f))
                     if (activePrompt?.serviceConnected == true) {
-                        TextButton("去授权", onClick = vm::requestScopes, modifier = Modifier.weight(1f))
+                        TextButton(resources.getString(R.string.authorize), onClick = vm::requestScopes, modifier = Modifier.weight(1f))
                     } else {
-                        TextButton("打开 LSPosed", onClick = {
+                        TextButton(resources.getString(R.string.open_lsposed), onClick = {
                             val launch = runCatching { context.packageManager.getLaunchIntentForPackage("org.lsposed.manager") }.getOrNull()
                             if (launch != null) runCatching { context.startActivity(launch) }
-                                .onFailure { vm.message("无法打开 LSPosed：${it.message?.take(60)}") }
-                            else vm.message("未找到 LSPosed 管理器，请手动打开后勾选作用域")
+                                .onFailure { vm.message(resources.getString(R.string.unable_to_open_lsposed, it.message?.take(60))) }
+                            else vm.message(resources.getString(R.string.lsposed_manager_was_not_found_open_it))
                             vm.requestScopes()
                         }, modifier = Modifier.weight(1f))
                     }
@@ -511,19 +517,19 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
         }
         PreviewDialog(preview, state, onDismiss = { preview = false })
         SendLogDialog(showLogDialog, state, onDismissRequest = { showLogDialog = false })
-        SuperDialog(show = availableUpdate != null, title = "发现新版本 ${availableUpdate?.version.orEmpty()}",
+        SuperDialog(show = availableUpdate != null, title = resources.getString(R.string.new_version, availableUpdate?.version.orEmpty()),
             onDismissRequest = vm::dismissUpdate) {
             val selectedSource = UpdateSource.valueOf(selectedUpdateSource)
             val downloading = updateDownload is UpdateDownloadState.Downloading
             val sourceLocked = downloading || updateDownload is UpdateDownloadState.Ready
             Column(Modifier.heightIn(max = 540.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                MarkdownText(availableUpdate?.notes.orEmpty().ifBlank { "新版本已发布，可直接在应用内下载并请求系统安装。" })
+                MarkdownText(availableUpdate?.notes.orEmpty().ifBlank { resources.getString(R.string.a_new_version_is_available_download_it) })
                 OverlaySpinnerPreference(
-                    title = "下载源",
-                    summary = "选择更新包下载服务器",
+                    title = resources.getString(R.string.download_source),
+                    summary = resources.getString(R.string.choose_the_update_download_server),
                     items = listOf(
-                        DropdownItem(UpdateSource.GITHUB.label, summary = "GitHub 官方发布服务器"),
-                        DropdownItem(UpdateSource.GH_DPIK_TOP.label, summary = "网络受限时可尝试的镜像站"),
+                        DropdownItem(resources.getString(UpdateSource.GITHUB.label), summary = resources.getString(R.string.official_github_release_server)),
+                        DropdownItem(resources.getString(UpdateSource.GH_DPIK_TOP.label), summary = resources.getString(R.string.try_this_mirror_if_github_is_unreachable)),
                     ),
                     selectedIndex = selectedSource.ordinal,
                     enabled = !sourceLocked,
@@ -532,18 +538,18 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
                     },
                 )
                 when (val state = updateDownload) {
-                    is UpdateDownloadState.Downloading -> Text("正在从 ${state.source.label} 下载：${downloadProgress(state.received, state.total)}",
+                    is UpdateDownloadState.Downloading -> Text(resources.getString(R.string.downloading_from, resources.getString(state.source.label), downloadProgress(state.received, state.total)),
                         color = MiuixTheme.colorScheme.primary)
-                    is UpdateDownloadState.Failed -> Text("下载失败：${state.reason}", color = MiuixTheme.colorScheme.error)
-                    is UpdateDownloadState.Ready -> Text("更新包已下载，可以请求系统安装。", color = MiuixTheme.colorScheme.primary)
+                    is UpdateDownloadState.Failed -> Text(resources.getString(R.string.download_failed, io.github.xblocker.i18n.LocalizedText.resolve(context, state.reason)), color = MiuixTheme.colorScheme.error)
+                    is UpdateDownloadState.Ready -> Text(resources.getString(R.string.update_downloaded_and_ready_to_install), color = MiuixTheme.colorScheme.primary)
                     UpdateDownloadState.Idle -> Unit
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    TextButton("稍后", onClick = vm::dismissUpdate, enabled = !downloading, modifier = Modifier.weight(1f))
+                    TextButton(resources.getString(R.string.later), onClick = vm::dismissUpdate, enabled = !downloading, modifier = Modifier.weight(1f))
                     if (updateDownload is UpdateDownloadState.Ready) {
-                        TextButton("请求安装", onClick = vm::installDownloaded, modifier = Modifier.weight(1f))
+                        TextButton(resources.getString(R.string.request_installation), onClick = vm::installDownloaded, modifier = Modifier.weight(1f))
                     } else {
-                        TextButton(if (updateDownload is UpdateDownloadState.Failed) "重试下载" else "下载更新",
+                        TextButton(if (updateDownload is UpdateDownloadState.Failed) resources.getString(R.string.retry_download) else resources.getString(R.string.download_update),
                             onClick = { vm.downloadUpdate(selectedSource) }, enabled = !downloading, modifier = Modifier.weight(1f))
                     }
                 }
@@ -561,22 +567,24 @@ private val sectionTitleMargin = PaddingValues(horizontal = 16.dp, vertical = 8.
 
 @Composable
 private fun PreviewDialog(show: Boolean, state: UiState, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val resources = androidx.compose.ui.platform.LocalResources.current
     var text by rememberSaveable { mutableStateOf("") }
     var name by rememberSaveable { mutableStateOf("") }
     var handle by rememberSaveable { mutableStateOf("") }
     var reply by rememberSaveable { mutableStateOf(true) }
     var result by rememberSaveable { mutableStateOf("") }
     val scope = rememberCoroutineScope()
-    SuperDialog(show = show, title = "规则测试", onDismissRequest = onDismiss) {
+    SuperDialog(show = show, title = resources.getString(R.string.test_rules), onDismissRequest = onDismiss) {
         Column(Modifier.imePadding().heightIn(max = 480.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            TextField(value = text, onValueChange = { text = it.take(32_768); result = "" }, label = "评论或推文正文", minLines = 2, maxLines = 4)
-            TextField(value = name, onValueChange = { name = it.take(512); result = "" }, label = "昵称（可选）", singleLine = true)
-            TextField(value = handle, onValueChange = { handle = it.take(128); result = "" }, label = "@用户名（可选）", singleLine = true)
-            SuperSwitch(title = "这是一条回复", checked = reply, onCheckedChange = { reply = it; result = "" })
+            TextField(value = text, onValueChange = { text = it.take(32_768); result = "" }, label = resources.getString(R.string.reply_or_tweet_text), minLines = 2, maxLines = 4)
+            TextField(value = name, onValueChange = { name = it.take(512); result = "" }, label = resources.getString(R.string.display_name_optional), singleLine = true)
+            TextField(value = handle, onValueChange = { handle = it.take(128); result = "" }, label = resources.getString(R.string.username_optional), singleLine = true)
+            SuperSwitch(title = resources.getString(R.string.this_is_a_reply), checked = reply, onCheckedChange = { reply = it; result = "" })
             if (result.isNotEmpty()) Text(result, fontSize = 14.sp, color = MiuixTheme.colorScheme.primary)
-            TextButton("检查是否命中", onClick = { scope.launch {
+            TextButton(resources.getString(R.string.check_for_a_match), onClick = { scope.launch {
                 val hit = withContext(Dispatchers.Default) { state.engine.match(Tweet("preview", text, name, handle, reply)) }
-                result = hit?.let { "将被过滤 · ${it.reason}\n${it.rule}" } ?: "将被保留（包含总开关、回复范围和白名单判断）"
+                result = hit?.let { resources.getString(R.string.will_be_filtered_n, io.github.xblocker.i18n.LocalizedText.resolve(context, it.reason), it.rule) } ?: resources.getString(R.string.will_be_kept_considering_the_main_switch)
             } }, modifier = Modifier.fillMaxWidth())
         }
     }

@@ -92,6 +92,7 @@ fun AboutScreenMiuix(
     actions: AboutScreenActions,
     enableBlur: Boolean,
 ) {
+    val resources = androidx.compose.ui.platform.LocalResources.current
     val topAppBarScrollBehavior = MiuixScrollBehavior()
     val lazyListState = rememberLazyListState()
     var logoHeightPx by remember { mutableIntStateOf(0) }
@@ -133,7 +134,7 @@ fun AboutScreenMiuix(
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                                contentDescription = "返回设置",
+                                contentDescription = resources.getString(io.github.xblocker.R.string.back_settings),
                                 tint = colorScheme.onBackground
                             )
                         }

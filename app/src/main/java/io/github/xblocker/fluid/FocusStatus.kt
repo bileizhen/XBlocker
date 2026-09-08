@@ -20,11 +20,12 @@ object FocusStatus {
     private const val MODULE_PACKAGE = "io.github.bileizhen.xblocker"
 
     fun ensureChannels(context: Context) {
+        val text = NotificationText.from(context)
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
         manager.createNotificationChannel(NotificationChannel(
-            CHANNEL_ID, "焦点通知转换", NotificationManager.IMPORTANCE_HIGH,
+            CHANNEL_ID, text.focusChannel, NotificationManager.IMPORTANCE_HIGH,
         ).apply {
-            description = "将 XBlocker 实时拦截状态转换为小米焦点通知"
+            description = text.focusDescription
             setShowBadge(false)
             setSound(null, null)
             enableVibration(false)
@@ -32,6 +33,7 @@ object FocusStatus {
     }
 
     fun onDiagnostics(context: Context, json: org.json.JSONObject): Boolean {
+        val text = NotificationText.from(context)
         val blocked = json.optLong("blocked").coerceAtLeast(0)
         val tweets = maxOf(json.optLong("tweets"), blocked)
         val age = System.currentTimeMillis() - json.optLong("lastSeen")
@@ -45,7 +47,7 @@ object FocusStatus {
         val builder = Notification.Builder(context, CHANNEL_ID)
             .setSmallIcon(notificationIcon(context))
             .setContentTitle("XBlocker")
-            .setContentText("本轮已拦截 $blocked / $tweets 条")
+            .setContentText(text.session.format(blocked, tweets))
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setTimeoutAfter(FluidStatus.REPORT_TIMEOUT_MS - age)
