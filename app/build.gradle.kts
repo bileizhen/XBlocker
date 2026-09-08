@@ -11,8 +11,8 @@ android {
         applicationId = "io.github.bileizhen.xblocker"
         minSdk = 28
         targetSdk = 36
-        versionCode = 10
-        versionName = "0.2.6"
+        versionCode = 11
+        versionName = "0.2.7"
         // The LSPosed repository requires a no-domain package to use the GitHub username.
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Supplied by Xiaomi after the app's Super Island service is enabled.
