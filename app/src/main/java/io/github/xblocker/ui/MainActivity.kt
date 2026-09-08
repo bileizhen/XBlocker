@@ -516,7 +516,7 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
             val downloading = updateDownload is UpdateDownloadState.Downloading
             val sourceLocked = downloading || updateDownload is UpdateDownloadState.Ready
             Column(Modifier.heightIn(max = 540.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text(availableUpdate?.notes?.ifBlank { "新版本已发布，可直接在应用内下载并请求系统安装。" }.orEmpty())
+                MarkdownText(availableUpdate?.notes.orEmpty().ifBlank { "新版本已发布，可直接在应用内下载并请求系统安装。" })
                 OverlaySpinnerPreference(
                     title = "下载源",
                     summary = "选择更新包下载服务器",
