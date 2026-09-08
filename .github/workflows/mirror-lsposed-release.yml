@@ -51,7 +51,7 @@ jobs:
           jq -r '.body // ""' release.json > body.md
 
       - name: Read build.gradle.kts from the release commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ steps.release.outputs.tag }}
           sparse-checkout: app/build.gradle.kts
