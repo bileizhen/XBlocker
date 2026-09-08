@@ -36,10 +36,13 @@ jobs:
           TAG: ${{ github.event.release.tag_name || inputs.tag }}
         run: |
           gh release view "$TAG" --repo "$GITHUB_REPOSITORY" \
-            --json tagName,name,isPrerelease,body > release.json
-          NAME="$(jq -r .name release.json)"
-          if [ -z "$NAME" ] || [ "$NAME" = "null" ] || [ "$(jq -r .tagName release.json)" != "v$NAME" ]; then
-            echo "::error::Release title must be the bare version name and its tag must be v<version> (got tag $(jq -r .tagName release.json), title '$NAME')."
+            --json tagName,isPrerelease,body > release.json
+          # Main releases are tagged v<versionName>; their titles may carry an
+          # "XBlocker " prefix, so derive the version from the tag and verify
+          # it against build.gradle.kts in the next step.
+          NAME="${TAG#v}"
+          if [ -z "$NAME" ] || [ "$NAME" = "$TAG" ]; then
+            echo "::error::Release tag must be v<versionName> (got $TAG)."
             exit 1
           fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
