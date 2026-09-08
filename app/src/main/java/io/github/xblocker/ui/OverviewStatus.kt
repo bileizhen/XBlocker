@@ -20,10 +20,13 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 internal fun OverviewStatus(state: UiState, onHistory: () -> Unit, onRules: () -> Unit) {
     val colors = MiuixTheme.colorScheme
     val hooked = state.diagnostics.optInt("hooks") > 0
-    val active = hooked && state.settings.enabled && System.currentTimeMillis() - state.diagnostics.optLong("lastSeen") < 20_000
     // A recent marker means the hook runs in X but the report bridge is down; without any
     // marker at all the module was most likely never loaded by the framework.
     val markerFresh = System.currentTimeMillis() - state.marker.optLong("lastSeen") < 600_000
+    val bridgeBlocked = markerFresh && state.marker.optString("phase") == "bridge-failed" &&
+        state.marker.optLong("lastSeen") > state.diagnostics.optLong("lastSeen")
+    val active = !bridgeBlocked && hooked && state.settings.enabled &&
+        System.currentTimeMillis() - state.diagnostics.optLong("lastSeen") < 20_000
     val monet = state.colorMode >= 3
     val dark = LocalDarkTheme.current
     Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -50,13 +53,14 @@ internal fun OverviewStatus(state: UiState, onHistory: () -> Unit, onRules: () -
                 }
                 Column(Modifier.fillMaxWidth().padding(16.dp)) {
                     Text(
-                        when { !state.settings.enabled -> "过滤已暂停"; active -> "过滤工作中"; hooked -> "模块已加载"; else -> "等待 X 连接" },
+                        when { !state.settings.enabled -> "过滤已暂停"; bridgeBlocked -> "回报通道受阻"; active -> "过滤工作中"; hooked -> "模块已加载"; else -> "等待 X 连接" },
                         fontSize = 20.sp, fontWeight = FontWeight.SemiBold,
                         color = colors.onSurface,
                     )
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        if (hooked) "X ${state.diagnostics.optString("version")}"
+                        if (bridgeBlocked) "检查 HMA-OSS 隐藏规则\n详见设置 → 运行诊断"
+                        else if (hooked) "X ${state.diagnostics.optString("version")}"
                         else if (markerFresh) "模块已在 X 中运行，回报通道受阻"
                         else "1. 在 LSPosed 启用模块并勾选 X\n2. 强行停止 X 后重新打开",
                         fontSize = 14.sp, fontWeight = FontWeight.Medium,

@@ -48,6 +48,8 @@ XBlocker 优先检测 OkHttp GraphQL 入口，必要时回退 Jackson / LoganSqu
 3. 强行停止 X，再重新打开。
 4. 打开 XBlocker，在“运行诊断”确认模块连接和时间线计数。
 
+使用 HMA-OSS 等应用隐藏工具时，请确保 **X 能看见 XBlocker**（`io.github.bileizhen.xblocker`）：检查针对 X 的隐藏规则、模板及 Xposed 模块预设，放行 XBlocker，或关闭针对 X 的应用隐藏。修改后先打开 XBlocker，再强行停止并重新打开 X。模块已加载但显示“回报受阻”或 `Unknown authority` 时，优先检查此项；未收到回报时，界面的零计数不能证明过滤未运行。
+
 从 0.2.4 起，LSPosed 模块包名为 `io.github.bileizhen.xblocker`，以符合模块仓库的包名规则。0.2.3 及更早版本使用旧包名，升级时需要先安装新包并在 LSPosed 中重新启用作用域；两个包可以暂时并存，确认新包工作后再卸载旧包。
 
 ## 更新

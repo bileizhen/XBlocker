@@ -15,6 +15,10 @@ artifacts/
 .research/*
 !.research/x1223-analysis.md
 
+# Local device diagnostics (bugreport / LSPosed log captures)
+.tmp_bugreport/
+.tmp_lsposed/
+
 # OS
 .DS_Store
 Thumbs.db
