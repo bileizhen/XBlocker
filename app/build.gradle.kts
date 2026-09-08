@@ -44,6 +44,7 @@ dependencies {
     implementation("top.yukonga.miuix.kmp:miuix-squircle-android:0.9.3")
     implementation("androidx.work:work-runtime-ktx:2.10.5")
     compileOnly("de.robv.android.xposed:api:82")
+    compileOnly("io.github.libxposed:api:101.0.1")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20250517")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")

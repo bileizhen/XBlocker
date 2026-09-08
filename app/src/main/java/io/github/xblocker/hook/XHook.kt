@@ -43,25 +43,29 @@ private fun sendMarker(context: Context, payload: JSONObject) {
 
 class XHook : IXposedHookLoadPackage {
     override fun handleLoadPackage(param: XC_LoadPackage.LoadPackageParam) {
-        if (param.packageName in OplusFluidCloudHook.TARGET_PACKAGES) {
-            runCatching { OplusFluidCloudHook.install(param.packageName, param.classLoader) }
+        handlePackage(param.packageName, param.processName, param.classLoader)
+    }
+
+    internal fun handlePackage(packageName: String, processName: String, classLoader: ClassLoader) {
+        if (packageName in OplusFluidCloudHook.TARGET_PACKAGES) {
+            runCatching { OplusFluidCloudHook.install(packageName, classLoader) }
                 .onFailure {
                     XposedBridge.log("XBlocker.FluidCloud: initialization failed: ${it.javaClass.simpleName}")
                 }
-            markSystemProcess(param)
+            markSystemProcess(packageName, processName)
         }
-        if (param.packageName == "com.android.systemui" && param.processName == param.packageName) {
-            runCatching { XiaomiFocusHook.install(param.classLoader) }.onFailure {
+        if (packageName == "com.android.systemui" && processName == packageName) {
+            runCatching { XiaomiFocusHook.install(classLoader) }.onFailure {
                 XposedBridge.log("XBlocker.Focus: initialization failed: ${it.javaClass.simpleName}")
             }
             return
         }
-        if (param.packageName != "com.twitter.android" || param.processName != param.packageName) return
+        if (packageName != "com.twitter.android" || processName != packageName) return
         XposedHelpers.findAndHookMethod(Application::class.java, "attach", Context::class.java, object : XC_MethodHook() {
             override fun afterHookedMethod(p: MethodHookParam) {
                 val context = p.args[0] as Context
                 val app = p.thisObject as Application
-                runCatching { Runtime(context, app, param.classLoader).start() }.onFailure {
+                runCatching { Runtime(context, app, classLoader).start() }.onFailure {
                     XposedBridge.log("XBlocker: initialization failed: ${it.javaClass.simpleName}")
                     sendMarker(context, JSONObject().put("phase", "init-failed")
                         .put("error", "${it.javaClass.simpleName}: ${it.message?.take(160)}"))
@@ -75,11 +79,11 @@ class XHook : IXposedHookLoadPackage {
      * missing scope from an enabled one and only prompt when needed. Sent once per process
      * start through the marker broadcast, which wakes the app if it is not running.
      */
-    private fun markSystemProcess(param: XC_LoadPackage.LoadPackageParam) {
-        if (param.processName != param.packageName) return
+    private fun markSystemProcess(packageName: String, processName: String) {
+        if (processName != packageName) return
         XposedHelpers.findAndHookMethod(Application::class.java, "attach", Context::class.java, object : XC_MethodHook() {
             override fun afterHookedMethod(p: MethodHookParam) {
-                sendMarker(p.args[0] as Context, JSONObject().put("phase", "hook@${param.packageName}"))
+                sendMarker(p.args[0] as Context, JSONObject().put("phase", "hook@$packageName"))
             }
         })
     }
