@@ -2,7 +2,10 @@
 # following the module repository conventions already used by the manual publish scripts:
 # tag "<versionCode>-<versionName>", title = version name, APK asset named
 # "XBlocker-<versionName>.apk", prereleases marked non-latest.
-# Requires the LSPOSED_REPO_TOKEN secret: a PAT with release write access to the mirror repo.
+# Requires the LSPOSED_REPO_TOKEN secret: a fine-grained PAT limited to the mirror
+# repository with Contents read/write (Metadata read is granted automatically).
+# If the org does not allow selecting the repo for fine-grained PATs, fall back to a
+# classic PAT with only the public_repo scope.
 
 name: Mirror release to LSPosed module repo
 
