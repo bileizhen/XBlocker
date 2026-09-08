@@ -7,6 +7,16 @@ internal object XiaomiFocusPayload {
     const val PARAM_KEY = "miui.focus.param"
     const val PICS_KEY = "miui.focus.pics"
     const val ICON_KEY = "miui.focus.pic_xblocker"
+    const val BUSINESS = "xblocker_filter"
+
+    /**
+     * True when a `miui.focus.param` value carries this module's business id. SystemUI
+     * checks are per posting package, and the live focus notification is X-owned, so the
+     * unlock identifies our requests by payload rather than by package alone.
+     */
+    fun owns(param: String?): Boolean = param != null && runCatching {
+        JSONObject(param).getJSONObject("param_v2").optString("business") == BUSINESS
+    }.getOrDefault(false)
 
     fun create(protocolVersion: Int, blocked: Long, tweets: Long): JSONObject? {
         if (protocolVersion < 2) return null
@@ -15,7 +25,7 @@ internal object XiaomiFocusPayload {
         val percent = if (total == 0L) 0 else (removed.toDouble() / total * 100).toInt().coerceIn(0, 100)
         val params = JSONObject()
             .put("protocol", 1)
-            .put("business", "xblocker_filter")
+            .put("business", BUSINESS)
             .put("updatable", true)
             .put("reopen", "reopen")
             .put("islandFirstFloat", false)

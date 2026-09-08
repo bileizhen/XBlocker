@@ -15,10 +15,14 @@ import java.util.concurrent.atomic.AtomicBoolean
 /**
  * Focus whitelist/signature entry points identified by HyperIsland (MIT, 1812z).
  * See assets/licenses/HyperIsland.txt and docs/xiaomi-super-island.md.
- * Only XBlocker's package is allowed; unrecognised signatures keep the OEM result.
+ * Only requests identifiable as XBlocker's own, or as any package carrying this
+ * module's focus payload, are allowed; unrecognised signatures keep the OEM result.
  */
 internal object XiaomiFocusHook {
     private const val MODULE_PACKAGE = "io.github.bileizhen.xblocker"
+    // The live focus notification is published from X's process, so eligibility checks
+    // see X's package; the payload's business id is what proves the request is ours.
+    private const val X_PACKAGE = "com.twitter.android"
     private val hooked = Collections.newSetFromMap(ConcurrentHashMap<Method, Boolean>())
 
     fun install(loader: ClassLoader) {
@@ -52,12 +56,18 @@ internal object XiaomiFocusHook {
                 it.name in methods && it.returnType == Boolean::class.javaPrimitiveType
             }.forEach { method ->
                 val reported = AtomicBoolean()
+                val xUnmatched = AtomicBoolean()
                 hookOnce(method, object : XC_MethodHook() {
                     override fun beforeHookedMethod(param: MethodHookParam) {
                         // Never infer notification ownership from the SystemUI context.
-                        if (param.args.any { ownsNotification(it) }) {
+                        val reason = allowed(param.args)
+                        if (reason != null) {
                             param.result = true
-                            if (reported.compareAndSet(false, true)) log("allowed XBlocker: ${method.name}")
+                            if (reported.compareAndSet(false, true)) log("allowed XBlocker: ${method.name} ($reason)")
+                        } else if (referencesX(param.args) && xUnmatched.compareAndSet(false, true)) {
+                            // An X-owned check our rules did not cover — likely a call form
+                            // carrying only the package string. Recorded to guide a wider rule.
+                            log("X request without module payload: ${method.name}")
                         }
                     }
                 })
@@ -65,12 +75,36 @@ internal object XiaomiFocusHook {
         }
     }
 
-    private fun ownsNotification(value: Any?): Boolean = when (value) {
-        is String -> value == MODULE_PACKAGE
-        is StatusBarNotification -> value.packageName == MODULE_PACKAGE
-        is ApplicationInfo -> value.packageName == MODULE_PACKAGE
-        is PackageInfo -> value.packageName == MODULE_PACKAGE
-        else -> false
+    /**
+     * Returns why the check may be allowed, or null to keep the OEM result:
+     * 1. any argument identifying XBlocker — the module-owned fallback route and
+     *    signature comparisons that name the module;
+     * 2. a notification of any package carrying this module's focus payload — the
+     *    X-owned live route, whose posting package is com.twitter.android.
+     */
+    private fun allowed(args: Array<Any?>): String? {
+        for (value in args) {
+            if (value is StatusBarNotification) {
+                if (value.packageName == MODULE_PACKAGE) return "module-package"
+                if (carriesOurPayload(value)) return "focus-payload@${value.packageName}"
+            } else if (identityOf(value) == MODULE_PACKAGE) return "module-package"
+        }
+        return null
+    }
+
+    private fun carriesOurPayload(sbn: StatusBarNotification): Boolean =
+        io.github.xblocker.fluid.XiaomiFocusPayload.owns(
+            sbn.notification?.extras?.getString(io.github.xblocker.fluid.XiaomiFocusPayload.PARAM_KEY))
+
+    private fun referencesX(args: Array<Any?>): Boolean = args.any {
+        (it as? StatusBarNotification)?.packageName == X_PACKAGE || identityOf(it) == X_PACKAGE
+    }
+
+    private fun identityOf(value: Any?): String? = when (value) {
+        is String -> value
+        is ApplicationInfo -> value.packageName
+        is PackageInfo -> value.packageName
+        else -> null
     }
 
     private fun hookOnce(method: Method, callback: XC_MethodHook) {

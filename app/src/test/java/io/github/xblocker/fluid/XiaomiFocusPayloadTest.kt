@@ -57,4 +57,16 @@ class XiaomiFocusPayloadTest {
             10000L to "1万", 999999L to "99万", 1000000L to "99万+", Long.MAX_VALUE to "99万+")
         for ((count, expected) in cases) assertEquals(expected, XiaomiFocusPayload.compactCount(count))
     }
+
+    @Test fun ownershipMatchesOnlyThisModuleBusinessPayload() {
+        assertTrue(XiaomiFocusPayload.owns(XiaomiFocusPayload.create(2, 3, 9)!!.toString()))
+        assertTrue(XiaomiFocusPayload.owns(XiaomiFocusPayload.create(3, 3, 9)!!.toString()))
+        // Foreign apps and every malformed shape must stay unrecognized.
+        assertFalse(XiaomiFocusPayload.owns("""{"param_v2":{"business":"com.other.app"}}"""))
+        assertFalse(XiaomiFocusPayload.owns("""{"param_v2":{}}"""))
+        assertFalse(XiaomiFocusPayload.owns("""{"business":"xblocker_filter"}"""))
+        assertFalse(XiaomiFocusPayload.owns("not json"))
+        assertFalse(XiaomiFocusPayload.owns(""))
+        assertFalse(XiaomiFocusPayload.owns(null))
+    }
 }

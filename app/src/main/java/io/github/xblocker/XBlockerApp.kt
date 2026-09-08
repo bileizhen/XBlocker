@@ -13,8 +13,9 @@ class XBlockerApp : Application() {
                 ?.deleteNotificationChannel("fluid_status_foreground")
         }
         // Make the LSPosed-shared configuration readable from X after an OEM kills the
-        // provider process when the XBlocker task is dismissed.
-        runCatching { io.github.xblocker.data.Repository(this) }
+        // provider process when the XBlocker task is dismissed. Also restores the
+        // module-owned notification channels cleared with the app's data.
+        runCatching { io.github.xblocker.data.Repository(this).createChannelsIfEnabled() }
         // Also re-issued by GrantReceiver after APK updates clear the persisted grant.
         BridgeVisibility.grant(this)
         CloudSync.schedule(this)

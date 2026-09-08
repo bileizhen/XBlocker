@@ -11,6 +11,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 class Repository(context: Context) {
+    private val appContext = context.applicationContext
     // With xposedsharedprefs declared, LSPosed redirects the module app's prefs dir to its
     // serving path and force-chmods files to 744 there (ConfigCache.getPrefsPath), which is
     // what XSharedPreferences in X reads. The redirect depends on the meta-data, not on the
@@ -103,9 +104,27 @@ class Repository(context: Context) {
     fun setScopePromptShown(version: Int) { commitAndShare(prefs.edit().putInt("scopePromptVersion", version)) }
     fun clearHistory() { synchronized(lock) { commitAndShare(prefs.edit().remove("history").remove("blocked")) } }
     fun fluidCloud(): Boolean = prefs.getBoolean("fluidCloud", false)
-    fun setFluidCloud(enabled: Boolean) { check(prefs.edit().putBoolean("fluidCloud", enabled).commit()); makeSharedPrefsReadable() }
+    fun setFluidCloud(enabled: Boolean) {
+        check(prefs.edit().putBoolean("fluidCloud", enabled).commit()); makeSharedPrefsReadable()
+        createChannelsIfEnabled()
+    }
     fun focusNotification(): Boolean = prefs.getBoolean("focusNotification", false)
-    fun setFocusNotification(enabled: Boolean) { check(prefs.edit().putBoolean("focusNotification", enabled).commit()); makeSharedPrefsReadable() }
+    fun setFocusNotification(enabled: Boolean) {
+        check(prefs.edit().putBoolean("focusNotification", enabled).commit()); makeSharedPrefsReadable()
+        createChannelsIfEnabled()
+    }
+
+    /**
+     * The live notifications are normally posted by X's process, which never creates
+     * channels under this package; without this the system's per-app notification page
+     * shows "no channels" and OEM focus-permission UI has nothing to attach to.
+     */
+    fun createChannelsIfEnabled() {
+        runCatching {
+            if (fluidCloud()) io.github.xblocker.fluid.FluidStatus.ensureChannels(appContext)
+            if (focusNotification()) io.github.xblocker.fluid.FocusStatus.ensureChannels(appContext)
+        }
+    }
     fun autoUpdate(): Boolean = prefs.getBoolean("autoUpdate", true)
     fun setAutoUpdate(enabled: Boolean) { check(prefs.edit().putBoolean("autoUpdate", enabled).commit()); makeSharedPrefsReadable() }
     /** Update channel: 0 = stable only, 1 = include pre-releases. */

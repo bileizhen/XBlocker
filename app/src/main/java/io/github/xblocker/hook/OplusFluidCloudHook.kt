@@ -45,7 +45,7 @@ internal object OplusFluidCloudHook {
         when (packageName) {
             "com.android.systemui", "com.oplus.systemui.plugins" -> {
                 hookMediaWhitelist(classLoader)
-                hookFrontExemption()
+                hookPresentation(classLoader)
             }
             "com.oplus.pantanal.ums", "com.coloros.assistantscreen" -> hookAssistantPermission(classLoader)
         }
@@ -111,7 +111,7 @@ internal object OplusFluidCloudHook {
      * the SystemUI process, so wait for the state class to load, then keep X present in the
      * exemption list, re-applying after every config reload.
      */
-    private fun hookFrontExemption() {
+    private fun hookPresentation(classLoader: ClassLoader) {
         if (!frontExemptionInstalled.compareAndSet(false, true)) return
         runCatching {
             XposedHelpers.findAndHookMethod(
@@ -119,11 +119,17 @@ internal object OplusFluidCloudHook {
                 String::class.java, Boolean::class.javaPrimitiveType,
                 object : XC_MethodHook() {
                     override fun afterHookedMethod(param: MethodHookParam) {
-                        if (param.args[0] != SEEDLING_STATE_CLASS) return
-                        (param.result as? Class<*>)?.let(::hookStateReload)
+                        when (param.args[0]) {
+                            SEEDLING_STATE_CLASS -> (param.result as? Class<*>)?.let(::hookStateReload)
+                            OplusCapsuleAutoExpandHook.MODEL_CLASS ->
+                                (param.result as? Class<*>)?.let(OplusCapsuleAutoExpandHook::install)
+                        }
                     }
                 },
             )
+            // Also cover classes already visible when this process installs its hooks.
+            XposedHelpers.findClassIfExists(OplusCapsuleAutoExpandHook.MODEL_CLASS, classLoader)
+                ?.let(OplusCapsuleAutoExpandHook::install)
         }.onFailure { XposedBridge.log("$TAG: front exemption hook failed: ${it.javaClass.simpleName}") }
     }
 

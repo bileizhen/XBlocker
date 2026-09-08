@@ -414,6 +414,7 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
                         if (state.diagnostics.optLong("lastSeen") == 0L) item { Notice("未收到回报时依次检查：LSPosed 中已启用模块并勾选 X 作用域；更改后强行停止 X 再打开。上方激活标记也为空时，说明模块未被框架加载。") }
                         item { Notice("HMA-OSS / 应用隐藏：请让 X 能看见 XBlocker。在 HMA-OSS 中检查 X 的隐藏规则、模板及 Xposed 模块预设，放行 XBlocker（io.github.bileizhen.xblocker），或关闭针对 X 的应用隐藏。修改后先打开 XBlocker，再强行停止并重新打开 X，刷新回复列表。") }
                         item { Notice("模块已加载却显示“回报受阻”或 Unknown authority 时，请优先检查应用隐藏设置。未收到回报时，界面的 0 次不代表实际未过滤；请结合回复是否被隐藏判断。") }
+                        item { Notice("仅保留 XBlocker 后台时才能拦截：请在系统应用管理中允许 XBlocker 自启动 / 关联启动，再打开一次 XBlocker，并强行停止后重新打开 X 复测。已有用户开启自启动后恢复正常，无需长期锁定后台卡片。") }
                         item { Notice("更换 X 版本后，请检查数据入口和时间线计数。已经缓存的内容需重新刷新；开关和规则修改约 5 秒生效。") }
                     }
                     4 -> appearanceItems(state, vm)
