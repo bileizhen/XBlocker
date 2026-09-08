@@ -36,7 +36,7 @@ XBlocker 是一个 Android 原生 X 客户端的 LSPosed 过滤模块。它在�
 | 项目 | 支持情况 |
 | --- | --- |
 | Android | 9（API 28）及以上 |
-| 框架 | LSPosed，需保留 legacy 模块支持 |
+| 框架 | LSPosed API 101 |
 | 已验证 X | `12.16.3-release.0`、`12.23.1-prod.01` |
 
 XBlocker 优先检测 OkHttp GraphQL 入口，必要时回退 Jackson / LoganSquare。更多验证过程见[多版本适配说明](docs/multiversion-support.md)。
