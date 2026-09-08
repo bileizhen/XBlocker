@@ -3,6 +3,8 @@
   <h1>XBlocker</h1>
   <p>让 X 时间线少一点噪音。</p>
 
+  <p><strong>简体中文</strong> | <a href="README.en.md">English</a></p>
+
   [![License](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
   [![Android 9+](https://img.shields.io/badge/Android-9%2B-blue.svg)](https://www.python.org/)
   [![LSPosed](https://img.shields.io/badge/LSPosed-API_101-orange.svg)](https://lsposed.org)
@@ -26,6 +28,7 @@ XBlocker 是一个 Android 原生 X 客户端的 LSPosed 过滤模块。它在�
 - **实时拦截状态**：原生通道使用 Android 16 实时通知接口，由系统决定展示为小米超级岛或 O 系流体云，不写入焦点通知参数；焦点通知转换另有独立开关。
 - **无需常驻监控**：实时状态由 X 进程直接回报和发布，系统自动超时清理，无需保留 XBlocker 后台卡片。
 - **Miuix 界面**：支持浅色、深色、Monet、模糊、液态玻璃、预测性返回和全局缩放。
+- **多语言**：支持简体中文、繁体中文、英文和跟随系统，可在设置中切换；Android 13 及以上也支持系统应用语言设置。翻译维护见 [I18N.md](I18N.md)。
 
 ## 兼容性
 
