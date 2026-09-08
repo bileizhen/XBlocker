@@ -29,6 +29,15 @@ jobs:
   mirror:
     runs-on: ubuntu-latest
     steps:
+      - name: Read build.gradle.kts from the release commit
+        # Must run first: checkout cleans the workspace, so any file written
+        # by earlier steps (release.json, body.md, the APK) would be wiped.
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+          sparse-checkout: app/build.gradle.kts
+          sparse-checkout-cone-mode: false
+
       - name: Resolve release
         id: release
         env:
@@ -49,13 +58,6 @@ jobs:
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
           echo "prerelease=$(jq -r .isPrerelease release.json)" >> "$GITHUB_OUTPUT"
           jq -r '.body // ""' release.json > body.md
-
-      - name: Read build.gradle.kts from the release commit
-        uses: actions/checkout@v5
-        with:
-          ref: ${{ steps.release.outputs.tag }}
-          sparse-checkout: app/build.gradle.kts
-          sparse-checkout-cone-mode: false
 
       - name: Parse build.gradle.kts
         id: gradle
