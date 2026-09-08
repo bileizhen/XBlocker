@@ -22,3 +22,6 @@ artifacts/
 # OS
 .DS_Store
 Thumbs.db
+
+# Internal docs (kept local, not published)
+docs/

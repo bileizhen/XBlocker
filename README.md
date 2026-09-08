@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/icon-512.png" width="96" alt="XBlocker">
+  <img src=".github/img/icon-512.png" width="96" alt="XBlocker">
   <h1>XBlocker</h1>
   <p>让 X 时间线少一点噪音。</p>
 
@@ -10,10 +10,6 @@
 
   <p>
     <a href="https://github.com/bileizhen/XBlocker/releases/latest">下载最新版</a>
-    ·
-    <a href="docs/multiversion-support.md">多版本适配</a>
-    ·
-    <a href="docs/x-12.16.3.md">12.16.3 记录</a>
   </p>
 </div>
 
@@ -27,8 +23,8 @@ XBlocker 是一个 Android 原生 X 客户端的 LSPosed 过滤模块。它在�
 - **多版本适配**：按宿主接口自动选择过滤入口，不依赖单一版本号；未知结构原样透传。
 - **应用内更新**：启动自动检查 GitHub 正式版，可手动检查；下载时可选择 GitHub 原站或 `gh.dpik.top` 镜像，然后请求系统安装。
 - **诊断记录**：查看模块连接、数据入口、拦截计数和最近 200 条记录，可导出诊断 ZIP。
-- **实时拦截状态**：原生通道使用 Android 16 实时通知接口，由系统决定展示为小米超级岛或 O 系流体云，不写入焦点通知参数；焦点通知转换另有独立开关。详见[小米超级岛适配](docs/xiaomi-super-island.md)和[流体云适配](docs/oppo-fluid-cloud.md)。
-- **无需常驻监控**：实时状态由 X 进程直接回报和发布，系统自动超时清理，无需保留 XBlocker 后台卡片。OPPO / 一加的当前接入范围与解锁模块说明见[流体云适配](docs/oppo-fluid-cloud.md)。
+- **实时拦截状态**：原生通道使用 Android 16 实时通知接口，由系统决定展示为小米超级岛或 O 系流体云，不写入焦点通知参数；焦点通知转换另有独立开关。
+- **无需常驻监控**：实时状态由 X 进程直接回报和发布，系统自动超时清理，无需保留 XBlocker 后台卡片。
 - **Miuix 界面**：支持浅色、深色、Monet、模糊、液态玻璃、预测性返回和全局缩放。
 
 ## 兼容性
@@ -39,7 +35,7 @@ XBlocker 是一个 Android 原生 X 客户端的 LSPosed 过滤模块。它在�
 | 框架 | LSPosed API 101 |
 | 已验证 X | `12.16.3-release.0`、`12.23.1-prod.01` |
 
-XBlocker 优先检测 OkHttp GraphQL 入口，必要时回退 Jackson / LoganSquare。更多验证过程见[多版本适配说明](docs/multiversion-support.md)。
+XBlocker 优先检测 OkHttp GraphQL 入口，必要时回退 Jackson / LoganSquare。
 
 ## 安装
 
