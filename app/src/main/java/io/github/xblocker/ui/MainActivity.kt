@@ -484,7 +484,7 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
         }
         val activePrompt = scopePrompt
         SuperDialog(show = activePrompt != null, title = "需要启用作用域",
-            summary = if (activePrompt?.serviceConnected == true) "原生超级岛 / 流体云需要以下作用域，点击“去授权”后 LSPosed 会弹出确认："
+            summary = if (activePrompt?.serviceConnected == true) "原生超级岛 / 流体云需要以下作用域，点击“去授权”后请在通知栏中处理 LSPosed 的作用域请求："
             else "原生超级岛 / 流体云需要以下作用域，请在 LSPosed → 模块 → XBlocker 中勾选后重启系统界面：",
             onDismissRequest = vm::dismissScopePrompt) {
             Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {

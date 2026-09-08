@@ -88,6 +88,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val prompt = scopePromptState.value ?: return
         dismissScopePrompt()
         if (prompt.serviceConnected) {
+            message("请在通知栏中处理 LSPosed 的作用域请求")
             XposedServiceClient.requestScope(prompt.missing) { approved, error ->
                 message(if (approved != null) "已授权 ${approved.size} 个作用域；请按 LSPosed 提示重启系统界面"
                 else "授权未完成：${error?.take(80)}。可改为在 LSPosed 中手动勾选。")
@@ -102,7 +103,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         val packages = listOf("com.twitter.android") + ScopeNotice.requiredScopes()
-        message("正在向 LSPosed 申请 ${packages.size} 项作用域…")
+        message("正在申请 ${packages.size} 项作用域，请在通知栏中处理 LSPosed 的作用域请求")
         XposedServiceClient.requestScope(packages) { approved, error ->
             message(if (approved != null) "已授权 ${approved.size} 项作用域；请按 LSPosed 提示重启相关进程"
             else "授权未完成：${error?.take(80)}")
