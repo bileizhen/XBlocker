@@ -2,6 +2,7 @@ package io.github.xblocker.ui
 
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import org.junit.Assert.assertEquals
@@ -33,6 +34,18 @@ class InlineMarkdownTest {
         assertEquals(linkStyle, style.item)
         val link = out.getLinkAnnotations(0, out.length).single().item as LinkAnnotation.Clickable
         assertEquals("https://t.me/bileizhen_XBlocker", link.tag)
+    }
+
+    @Test fun codeSpansDropTheBackticks() {
+        val out = render("包名 `io.github.bileizhen.xblocker` 保持等宽")
+        assertEquals("包名 io.github.bileizhen.xblocker 保持等宽", out.text)
+        val style = out.spanStyles.single()
+        assertEquals(3..30, style.start..style.end - 1)
+        assertEquals(FontFamily.Monospace, style.item.fontFamily)
+    }
+
+    @Test fun anUnpairedBacktickStaysLiteral() {
+        assertEquals("100% 剩余 ` 未配对", render("100% 剩余 ` 未配对").text)
     }
 
     @Test fun boldMarkersInsideALinkLabelStayLiteral() {

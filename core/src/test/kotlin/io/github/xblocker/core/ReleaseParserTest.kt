@@ -43,7 +43,7 @@ class ReleaseParserTest {
         assertNull(ReleaseParser.newerRelease(release().toString(), "unknown"))
     }
     @Test fun `release notes are bounded`() {
-        assertEquals(6000, ReleaseParser.newerRelease(release().put("body", "a".repeat(9000)).toString(), "0.1.0")!!.notes.length)
+        assertEquals(12000, ReleaseParser.newerRelease(release().put("body", "a".repeat(20000)).toString(), "0.1.0")!!.notes.length)
     }
 
     private fun list(vararg jsons: JSONObject) = JSONArray().also { array -> jsons.forEach { array.put(it) } }.toString()

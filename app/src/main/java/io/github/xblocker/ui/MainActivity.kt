@@ -538,8 +538,15 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
                     },
                 )
                 when (val state = updateDownload) {
-                    is UpdateDownloadState.Downloading -> Text(resources.getString(R.string.downloading_from, resources.getString(state.source.label), downloadProgress(state.received, state.total)),
-                        color = MiuixTheme.colorScheme.primary)
+                    is UpdateDownloadState.Downloading -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(resources.getString(R.string.downloading_from, resources.getString(state.source.label), downloadProgress(state.received, state.total)),
+                            fontSize = 13.sp, color = MiuixTheme.colorScheme.primary)
+                        // total < 0 means the server sent no length; fall back to indeterminate.
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth(),
+                            progress = if (state.total > 0L) (state.received.toFloat() / state.total).coerceIn(0f, 1f) else null,
+                        )
+                    }
                     is UpdateDownloadState.Failed -> Text(resources.getString(R.string.download_failed, io.github.xblocker.i18n.LocalizedText.resolve(context, state.reason)), color = MiuixTheme.colorScheme.error)
                     is UpdateDownloadState.Ready -> Text(resources.getString(R.string.update_downloaded_and_ready_to_install), color = MiuixTheme.colorScheme.primary)
                     UpdateDownloadState.Idle -> Unit

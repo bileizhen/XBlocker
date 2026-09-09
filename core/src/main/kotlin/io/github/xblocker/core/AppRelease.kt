@@ -91,7 +91,8 @@ object ReleaseParser {
         }.firstOrNull() ?: return null
         return AppRelease(
             version = tag.removePrefix("v"),
-            notes = release.optString("body").take(6000),
+            // Bilingual release notes roughly double the body length; keep a generous cap.
+            notes = release.optString("body").take(12_000),
             url = url,
             downloadUrl = asset.optString("browser_download_url"),
             assetName = asset.optString("name"),
