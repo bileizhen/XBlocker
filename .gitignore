@@ -14,7 +14,6 @@ local.properties
 # Dev/research artifacts (large APKs, reversed sources, probe dumps)
 artifacts/
 .research/*
-!.research/x1223-analysis.md
 
 # Local device diagnostics (bugreport / LSPosed log captures)
 .tmp_bugreport/
