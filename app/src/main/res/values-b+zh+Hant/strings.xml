@@ -112,6 +112,13 @@
     <string name="hma_oss_app_hiding_allow_x_to">"HMA-OSS / 應用隱藏：請讓 X 能看見 XBlocker。在 HMA-OSS 中檢查 X 的隱藏規則、模板及 Xposed 模組預設，放行 XBlocker（io.github.bileizhen.xblocker），或關閉針對 X 的應用隱藏。修改後先開啟 XBlocker，再強行停止並重新開啟 X，重新整理回覆列表。"</string>
     <string name="if_the_module_is_loaded_but_shows">"模組已載入卻顯示“回報受阻”或 Unknown authority 時，請優先檢查應用隱藏設定。未收到回報時，介面的 0 次不代表實際未過濾；請結合回覆是否被隱藏判斷。"</string>
     <string name="if_filtering_works_only_while_xblocker_remains">"僅保留 XBlocker 後臺時才能攔截：請在系統應用管理中允許 XBlocker 自啟動 / 關聯啟動，再開啟一次 XBlocker，並強行停止後重新開啟 X 複測。已有使用者開啟自啟動後恢復正常，無需長期鎖定後臺卡片。"</string>
+    <string name="startup_guide_title">"自啟動與即時活動"</string>
+    <string name="startup_guide_summary">"安裝後的一次性設定，確保攔截在背景持續生效"</string>
+    <string name="startup_guide_autostart_hint">"· 自啟動：在系統應用管理中允許 XBlocker 自啟動，雲端詞庫才能在背景定時同步"</string>
+    <string name="startup_guide_live_activity_hint">"· 即時活動：在 XBlocker 的通知設定中開啟即時活動，攔截膠囊（流體雲）才能顯示"</string>
+    <string name="open_autostart_settings">"去開自啟動"</string>
+    <string name="open_live_activity_settings">"去開即時活動"</string>
+    <string name="unable_to_open_system_settings">"無法開啟系統設定"</string>
     <string name="after_changing_the_x_version_check_the">"更換 X 版本後，請檢查資料入口和時間線計數。已經快取的內容需重新重新整理；開關和規則修改約 5 秒生效。"</string>
     <string name="one_username_per_line_not_a_display">"每行一個 @使用者名稱，不填寫暱稱。"</string>
     <string name="one_keyword_or_regular_expression_i_per">"每行一個關鍵詞，或 /正規表示式/i。儲存會替換現有自定義詞庫。"</string>

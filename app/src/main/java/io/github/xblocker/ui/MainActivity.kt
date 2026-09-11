@@ -59,6 +59,8 @@ import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import io.github.xblocker.core.RuleParser
 import io.github.xblocker.core.Tweet
+import io.github.xblocker.data.OemSettings
+import io.github.xblocker.data.Repository
 import io.github.xblocker.data.UpdateDownloadState
 import io.github.xblocker.data.UpdateSource
 import kotlinx.coroutines.Dispatchers
@@ -178,7 +180,30 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
         if (granted) {
             if (target == "native") vm.setFluidCloud(true)
             if (target == "focus") vm.setFocusNotification(true)
+            if (target == "live-activity" && !OemSettings.openLiveActivity(context))
+                vm.message(resources.getString(R.string.unable_to_open_system_settings))
         } else vm.message(resources.getString(R.string.notification_permission_is_required_to_show_live))
+    }
+    // The OEM autostart / live-activity switches have no runtime API, so a one-time
+    // post-install guide deep-links to the closest settings page instead.
+    var showOemGuide by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        if (OemSettings.applies() && runCatching { Repository(context).needsOemGuide() }.getOrDefault(false)) showOemGuide = true
+    }
+    fun dismissOemGuide() {
+        showOemGuide = false
+        runCatching { Repository(context).markOemGuideShown() }
+    }
+    fun openOemAutostart() {
+        dismissOemGuide()
+        if (!OemSettings.openAutostart(context)) vm.message(resources.getString(R.string.unable_to_open_system_settings))
+    }
+    fun openOemLiveActivity() {
+        dismissOemGuide()
+        if (Build.VERSION.SDK_INT >= 33 && !NotificationManagerCompat.from(context).areNotificationsEnabled()) {
+            pendingNotificationTarget = "live-activity"
+            notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else if (!OemSettings.openLiveActivity(context)) vm.message(resources.getString(R.string.unable_to_open_system_settings))
     }
     fun toggleFluidCloud(on: Boolean) {
         if (!on) { vm.setFluidCloud(false); return }
@@ -517,6 +542,17 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
         }
         PreviewDialog(preview, state, onDismiss = { preview = false })
         SendLogDialog(showLogDialog, state, onDismissRequest = { showLogDialog = false })
+        SuperDialog(show = showOemGuide, title = resources.getString(R.string.startup_guide_title),
+            summary = resources.getString(R.string.startup_guide_summary), onDismissRequest = { dismissOemGuide() }) {
+            Text(resources.getString(R.string.startup_guide_autostart_hint), fontSize = 13.sp)
+            Text(resources.getString(R.string.startup_guide_live_activity_hint), fontSize = 13.sp)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 4.dp)) {
+                TextButton(resources.getString(R.string.open_autostart_settings), onClick = { openOemAutostart() }, modifier = Modifier.weight(1f))
+                TextButton(resources.getString(R.string.open_live_activity_settings), onClick = { openOemLiveActivity() }, modifier = Modifier.weight(1f))
+            }
+            TextButton(resources.getString(R.string.not_now), onClick = { dismissOemGuide() },
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
+        }
         SuperDialog(show = availableUpdate != null, title = resources.getString(R.string.new_version, availableUpdate?.version.orEmpty()),
             onDismissRequest = vm::dismissUpdate) {
             val selectedSource = UpdateSource.valueOf(selectedUpdateSource)

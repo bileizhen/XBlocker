@@ -112,6 +112,13 @@
     <string name="hma_oss_app_hiding_allow_x_to">"HMA-OSS / 应用隐藏：请让 X 能看见 XBlocker。在 HMA-OSS 中检查 X 的隐藏规则、模板及 Xposed 模块预设，放行 XBlocker（io.github.bileizhen.xblocker），或关闭针对 X 的应用隐藏。修改后先打开 XBlocker，再强行停止并重新打开 X，刷新回复列表。"</string>
     <string name="if_the_module_is_loaded_but_shows">"模块已加载却显示“回报受阻”或 Unknown authority 时，请优先检查应用隐藏设置。未收到回报时，界面的 0 次不代表实际未过滤；请结合回复是否被隐藏判断。"</string>
     <string name="if_filtering_works_only_while_xblocker_remains">"仅保留 XBlocker 后台时才能拦截：请在系统应用管理中允许 XBlocker 自启动 / 关联启动，再打开一次 XBlocker，并强行停止后重新打开 X 复测。已有用户开启自启动后恢复正常，无需长期锁定后台卡片。"</string>
+    <string name="startup_guide_title">"自启动与实时活动"</string>
+    <string name="startup_guide_summary">"安装后的一次性设置，保证拦截在后台持续生效"</string>
+    <string name="startup_guide_autostart_hint">"· 自启动：在系统应用管理中允许 XBlocker 自启动，云端词库才能在后台定时同步"</string>
+    <string name="startup_guide_live_activity_hint">"· 实时活动：在 XBlocker 的通知设置中开启实时活动，拦截胶囊（流体云）才能显示"</string>
+    <string name="open_autostart_settings">"去开自启动"</string>
+    <string name="open_live_activity_settings">"去开实时活动"</string>
+    <string name="unable_to_open_system_settings">"无法打开系统设置"</string>
     <string name="after_changing_the_x_version_check_the">"更换 X 版本后，请检查数据入口和时间线计数。已经缓存的内容需重新刷新；开关和规则修改约 5 秒生效。"</string>
     <string name="one_username_per_line_not_a_display">"每行一个 @用户名，不填写昵称。"</string>
     <string name="one_keyword_or_regular_expression_i_per">"每行一个关键词，或 /正则表达式/i。保存会替换现有自定义词库。"</string>

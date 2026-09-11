@@ -44,6 +44,9 @@ class Repository(context: Context) {
         makeSharedPrefsReadable()
     } }
     fun syncFailed(message: String) { commitAndShare(prefs.edit().putString("syncError", message)) }
+    /** One-shot post-install guide for the OEM autostart / live-activity switches. */
+    fun needsOemGuide(): Boolean = !prefs.getBoolean("oemGuideShown", false)
+    fun markOemGuideShown() { commitAndShare(prefs.edit().putBoolean("oemGuideShown", true)) }
     fun diagnostics(): JSONObject = JSONObject(prefs.getString("diagnostics", "{}")!!)
     fun report(json: JSONObject) { synchronized(lock) {
         val previous = diagnostics()

@@ -112,6 +112,13 @@
     <string name="hma_oss_app_hiding_allow_x_to">"HMA-OSS / app hiding: allow X to see XBlocker. Check hiding rules, templates and Xposed module presets for X. Allow XBlocker (io.github.bileizhen.xblocker), or disable app hiding for X. Open XBlocker, then force-stop and reopen X and refresh replies."</string>
     <string name="if_the_module_is_loaded_but_shows">"If the module is loaded but shows “Reporting blocked” or Unknown authority, check app hiding settings first. Without reports, a zero count does not prove filtering is inactive; check whether replies are hidden."</string>
     <string name="if_filtering_works_only_while_xblocker_remains">"If filtering works only while XBlocker remains in the background, allow autostart / associated launch in system app settings. Open XBlocker, then force-stop and reopen X to test again. Users have reported that enabling autostart resolves this; keeping the app locked in the background is unnecessary."</string>
+    <string name="startup_guide_title">"Autostart &amp; live activities"</string>
+    <string name="startup_guide_summary">"One-time setup after install so filtering keeps working in the background"</string>
+    <string name="startup_guide_autostart_hint">"· Autostart: allow XBlocker to start itself in system settings, so cloud rules keep syncing in the background"</string>
+    <string name="startup_guide_live_activity_hint">"· Live activities: enable them for XBlocker in its notification settings to show the blocking capsule (fluid cloud)"</string>
+    <string name="open_autostart_settings">"Autostart"</string>
+    <string name="open_live_activity_settings">"Live activities"</string>
+    <string name="unable_to_open_system_settings">"Unable to open system settings"</string>
     <string name="after_changing_the_x_version_check_the">"After changing the X version, check the data adapter and timeline counts. Refresh cached content. Setting and rule changes take effect in about 5 seconds."</string>
     <string name="one_username_per_line_not_a_display">"One @username per line, not a display name."</string>
     <string name="one_keyword_or_regular_expression_i_per">"One keyword or /regular expression/i per line. Saving replaces your existing custom rules."</string>
