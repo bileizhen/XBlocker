@@ -25,3 +25,6 @@ Thumbs.db
 
 # Internal docs (kept local, not published)
 docs/
+
+# Local agent memory / workspace state
+.workbuddy-ai/
