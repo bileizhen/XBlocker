@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src=".github/img/icon-512.png" width="96" alt="XBlocker">
+
 # [XBlocker](https://github.com/bileizhen/XBlocker)
 
 Android 原生 X 客户端的 LSPosed 过滤模块
@@ -13,8 +15,6 @@ Android 原生 X 客户端的 LSPosed 过滤模块
   <a href="https://github.com/bileizhen/XBlocker/releases"><img src="https://img.shields.io/github/v/tag/bileizhen/XBlocker?label=release" alt="Latest Release"></a>
   <a href="https://github.com/bileizhen/XBlocker/releases"><img src="https://img.shields.io/github/downloads/bileizhen/XBlocker/total" alt="Downloads"></a>
 </p>
-
-<img src=".github/img/icon-512.png" width="96" alt="XBlocker">
 
 <p><strong>简体中文</strong> | <a href="README.en.md">English</a></p>
 
