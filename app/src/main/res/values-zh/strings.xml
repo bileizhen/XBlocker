@@ -182,6 +182,7 @@
     <string name="saved_changes_take_effect_in_x_in">"已保存，X 中约 5 秒后生效"</string>
     <string name="filtering_paused">"过滤已暂停"</string>
     <string name="reporting_blocked">"回报通道受阻"</string>
+    <string name="reporting_blocked_last_session">"上次 X 会话中回报通道受阻"</string>
     <string name="filtering_active">"过滤工作中"</string>
     <string name="module_loaded">"模块已加载"</string>
     <string name="waiting_for_x">"等待 X 连接"</string>

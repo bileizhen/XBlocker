@@ -182,6 +182,7 @@
     <string name="saved_changes_take_effect_in_x_in">"Saved. Changes take effect in X in about 5 seconds."</string>
     <string name="filtering_paused">"Filtering paused"</string>
     <string name="reporting_blocked">"Reporting blocked"</string>
+    <string name="reporting_blocked_last_session">"Reporting was blocked in the last X session"</string>
     <string name="filtering_active">"Filtering active"</string>
     <string name="module_loaded">"Module loaded"</string>
     <string name="waiting_for_x">"Waiting for X"</string>

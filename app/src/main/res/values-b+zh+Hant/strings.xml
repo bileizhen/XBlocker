@@ -182,6 +182,7 @@
     <string name="saved_changes_take_effect_in_x_in">"已儲存，X 中約 5 秒後生效"</string>
     <string name="filtering_paused">"過濾已暫停"</string>
     <string name="reporting_blocked">"回報通道受阻"</string>
+    <string name="reporting_blocked_last_session">"上次 X 會話中回報通道受阻"</string>
     <string name="filtering_active">"過濾工作中"</string>
     <string name="module_loaded">"模組已載入"</string>
     <string name="waiting_for_x">"等待 X 連線"</string>

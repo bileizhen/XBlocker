@@ -27,8 +27,14 @@ internal fun OverviewStatus(state: UiState, onHistory: () -> Unit, onRules: () -
     // A recent marker means the hook runs in X but the report bridge is down; without any
     // marker at all the module was most likely never loaded by the framework.
     val markerFresh = System.currentTimeMillis() - state.marker.optLong("lastSeen") < 600_000
-    val bridgeBlocked = markerFresh && state.marker.optString("phase") == "bridge-failed" &&
+    // No successful report may have arrived after the marker, or the marker describes a
+    // failure the bridge already recovered from.
+    val bridgeFailed = state.marker.optString("phase") == "bridge-failed" &&
         state.marker.optLong("lastSeen") > state.diagnostics.optLong("lastSeen")
+    val bridgeBlocked = markerFresh && bridgeFailed
+    // OEMs kill X soon after it leaves the foreground, so a stale bridge-failed marker is
+    // still the newest fact we have; "enable the module" would point users at the wrong fix.
+    val bridgeBlockedStale = !markerFresh && bridgeFailed
     val active = !bridgeBlocked && hooked && state.settings.enabled &&
         System.currentTimeMillis() - state.diagnostics.optLong("lastSeen") < 20_000
     val monet = state.colorMode >= 3
@@ -57,20 +63,20 @@ internal fun OverviewStatus(state: UiState, onHistory: () -> Unit, onRules: () -
                 }
                 Column(Modifier.fillMaxWidth().padding(16.dp)) {
                     Text(
-                        when { !state.settings.enabled -> resources.getString(R.string.filtering_paused); bridgeBlocked -> resources.getString(R.string.reporting_blocked); active -> resources.getString(R.string.filtering_active); hooked -> resources.getString(R.string.module_loaded); else -> resources.getString(R.string.waiting_for_x) },
+                        when { !state.settings.enabled -> resources.getString(R.string.filtering_paused); bridgeBlocked -> resources.getString(R.string.reporting_blocked); active -> resources.getString(R.string.filtering_active); bridgeBlockedStale -> resources.getString(R.string.reporting_blocked_last_session); hooked -> resources.getString(R.string.module_loaded); else -> resources.getString(R.string.waiting_for_x) },
                         fontSize = 20.sp, fontWeight = FontWeight.SemiBold,
                         color = colors.onSurface,
                     )
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        if (bridgeBlocked) resources.getString(R.string.check_hma_oss_hiding_rules_nsee_settings)
+                        if (bridgeFailed) resources.getString(R.string.check_hma_oss_hiding_rules_nsee_settings)
                         else if (hooked) "X ${state.diagnostics.optString("version")}"
                         else if (markerFresh) resources.getString(R.string.module_is_running_in_x_but_reporting)
                         else resources.getString(R.string.instructions_1_enable_the_module_and_select_x),
                         fontSize = 14.sp, fontWeight = FontWeight.Medium,
                         color = colors.onSurface,
                     )
-                    if (!hooked && !markerFresh) Text(resources.getString(R.string.scope_changes_apply_only_to_newly_started), fontSize = 12.sp, color = colors.onSurfaceVariantSummary)
+                    if (!hooked && !markerFresh && !bridgeFailed) Text(resources.getString(R.string.scope_changes_apply_only_to_newly_started), fontSize = 12.sp, color = colors.onSurfaceVariantSummary)
                 }
             }
         }
