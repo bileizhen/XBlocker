@@ -32,6 +32,9 @@ object DiagnosticReport {
             put("apiLevel", Build.VERSION.SDK_INT)
             put("xVersion", when { xPackage == null -> "未安装"; xName.isNullOrBlank() -> "未知"; else -> xName })
             put("xVersionCode", xPackage?.longVersionCode ?: 0L)
+            // A marker version without a visible X package means something intercepts this
+            // app's package queries (list-hiding modules); not the same as "X not installed".
+            put("xQueryIntercepted", xPackage == null && state.marker.optString("version").isNotBlank())
             put("configurationReady", state.ready)
             put("ruleCount", state.engine.count)
             put("rejectedRuleCount", state.engine.rejected.size)
@@ -73,7 +76,7 @@ object DiagnosticReport {
                     zip.write(text.toByteArray(Charsets.UTF_8))
                     zip.closeEntry()
                 }
-                entry("README.txt", "XBlocker diagnostic report\n\nsummary.json: app, device, installed X version, module activation marker and feature status.\ndiagnostics.json: module connection and filtering counters.\nlogcat.txt: recent logs visible to the XBlocker app process.\n\nNo root access is requested. X process / LSPosed private logs are not available to this app.\nCustom rules, whitelist and tweet history are not included.\n")
+                entry("README.txt", "XBlocker diagnostic report\n\nsummary.json: app, device, installed X version, module activation marker and feature status. xQueryIntercepted=true means X is installed and hooked but hidden from this app's package queries, not that X is missing.\ndiagnostics.json: module connection and filtering counters.\nlogcat.txt: recent logs visible to the XBlocker app process.\n\nNo root access is requested. X process / LSPosed private logs are not available to this app.\nCustom rules, whitelist and tweet history are not included.\n")
                 entry("summary.json", summary.put("moduleMarker", marker).toString(2))
                 entry("diagnostics.json", diagnostics.toString(2))
                 entry("logcat.txt", captureLogcat(context))
