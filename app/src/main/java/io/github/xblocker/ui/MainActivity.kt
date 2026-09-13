@@ -29,8 +29,12 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.core.app.NotificationManagerCompat
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -43,9 +47,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
@@ -553,13 +561,44 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
             TextButton(resources.getString(R.string.not_now), onClick = { dismissOemGuide() },
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
         }
-        SuperDialog(show = availableUpdate != null, title = resources.getString(R.string.new_version, availableUpdate?.version.orEmpty()),
-            onDismissRequest = vm::dismissUpdate) {
+        // miuix dialogs have no drag-to-dismiss; the title acts as a sheet handle: drag it down
+        // and release past the threshold to close, spring back otherwise.
+        val titleDragY = remember { Animatable(0f) }
+        val dismissThreshold = with(LocalDensity.current) { 140.dp.toPx() }
+        SuperDialog(show = availableUpdate != null,
+            modifier = Modifier.graphicsLayer { translationY = titleDragY.value },
+            onDismissRequest = vm::dismissUpdate,
+            onDismissFinished = { scope.launch { titleDragY.snapTo(0f) } }) {
             val selectedSource = UpdateSource.valueOf(selectedUpdateSource)
             val downloading = updateDownload is UpdateDownloadState.Downloading
             val sourceLocked = downloading || updateDownload is UpdateDownloadState.Ready
-            Column(Modifier.heightIn(max = 540.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                MarkdownText(availableUpdate?.notes.orEmpty().ifBlank { resources.getString(R.string.a_new_version_is_available_download_it) })
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Text(resources.getString(R.string.new_version, availableUpdate?.version.orEmpty()),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+                        .pointerInput(dismissThreshold) {
+                            detectVerticalDragGestures(
+                                onVerticalDrag = { change, amount ->
+                                    change.consume()
+                                    scope.launch { titleDragY.snapTo((titleDragY.value + amount).coerceAtLeast(0f)) }
+                                },
+                                onDragEnd = {
+                                    scope.launch {
+                                        if (titleDragY.value >= dismissThreshold) vm.dismissUpdate()
+                                        else titleDragY.animateTo(0f, spring(stiffness = Spring.StiffnessMediumLow))
+                                    }
+                                },
+                                onDragCancel = {
+                                    scope.launch { titleDragY.animateTo(0f, spring(stiffness = Spring.StiffnessMediumLow)) }
+                                })
+                        },
+                    fontSize = MiuixTheme.textStyles.title4.fontSize, fontWeight = FontWeight.Medium,
+                    textAlign = TextAlign.Center, color = MiuixTheme.colorScheme.onBackground)
+                // Release notes scroll in their own bounded region; the picker and actions below stay visible.
+                val notesMaxHeight = 420.dp.coerceAtMost((LocalConfiguration.current.screenHeightDp * 0.45f).dp)
+                Column(Modifier.heightIn(max = notesMaxHeight).verticalScroll(rememberScrollState())) {
+                    MarkdownText(stripVersionHeadings(availableUpdate?.version.orEmpty(),
+                        availableUpdate?.notes.orEmpty().ifBlank { resources.getString(R.string.a_new_version_is_available_download_it) }))
+                }
                 OverlaySpinnerPreference(
                     title = resources.getString(R.string.download_source),
                     summary = resources.getString(R.string.choose_the_update_download_server),
@@ -590,10 +629,14 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     TextButton(resources.getString(R.string.later), onClick = vm::dismissUpdate, enabled = !downloading, modifier = Modifier.weight(1f))
                     if (updateDownload is UpdateDownloadState.Ready) {
-                        TextButton(resources.getString(R.string.request_installation), onClick = vm::installDownloaded, modifier = Modifier.weight(1f))
+                        Button(onClick = vm::installDownloaded, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColorsPrimary()) {
+                            Text(resources.getString(R.string.request_installation))
+                        }
                     } else {
-                        TextButton(if (updateDownload is UpdateDownloadState.Failed) resources.getString(R.string.retry_download) else resources.getString(R.string.download_update),
-                            onClick = { vm.downloadUpdate(selectedSource) }, enabled = !downloading, modifier = Modifier.weight(1f))
+                        Button(onClick = { vm.downloadUpdate(selectedSource) }, enabled = !downloading, modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColorsPrimary()) {
+                            Text(if (updateDownload is UpdateDownloadState.Failed) resources.getString(R.string.retry_download) else resources.getString(R.string.download_update))
+                        }
                     }
                 }
             }
@@ -604,6 +647,13 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
 private fun downloadProgress(received: Long, total: Long): String {
     if (total > 0L) return "${(received * 100L / total).coerceIn(0L, 100L)}%"
     return "${received / (1024L * 1024L)} MB"
+}
+
+/** Release bodies open with a "## <version>" heading per language; the dialog title already shows it. */
+internal fun stripVersionHeadings(version: String, notes: String): String {
+    if (version.isBlank()) return notes
+    val heading = Regex("^#{1,6}\\s*${Regex.escape(version)}\\s*$")
+    return notes.lines().filterNot { heading.matches(it.trim()) }.joinToString("\n").trim()
 }
 
 private val sectionTitleMargin = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
