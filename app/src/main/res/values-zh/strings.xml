@@ -272,4 +272,8 @@
     <string name="adapter_initialization_failed">"数据入口初始化失败：%1$s"</string>
     <string name="filtering_skipped">"过滤已跳过：%1$s"</string>
     <string name="adapter_not_supported">"未找到兼容的数据入口，需要适配此 X 版本"</string>
+    <string name="block_timeline_reposts">"屏蔽时间线转帖"</string>
+    <string name="block_timeline_reposts_summary">"独立于关键词、仅过滤回复和白名单，移除转帖，保留引用帖"</string>
+    <string name="category_reposts">"转帖"</string>
+    <string name="reason_repost">"时间线转帖"</string>
 </resources>

@@ -14,6 +14,7 @@ data class FilterSettings(
     val disabledCategories: Set<String> = setOf("仇恨用语"),
     val customRules: String = "",
     val whitelist: Set<String> = emptySet(),
+    val blockReposts: Boolean = false,
 )
 
 object RuleParser {

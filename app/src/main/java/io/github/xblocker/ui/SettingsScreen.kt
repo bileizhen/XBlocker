@@ -98,6 +98,13 @@ internal fun LazyListScope.settingsItems(
                 checked = state.settings.blockPromoted,
                 onCheckedChange = { value -> vm.update { it.copy(blockPromoted = value) } },
             )
+            SwitchPreference(
+                title = resources.getString(R.string.block_timeline_reposts),
+                summary = resources.getString(R.string.block_timeline_reposts_summary),
+                startAction = { SettingsIcon(Icons.Rounded.Block) },
+                checked = state.settings.blockReposts,
+                onCheckedChange = { value -> vm.update { it.copy(blockReposts = value) } },
+            )
         }
     }
     item {

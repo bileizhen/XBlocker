@@ -272,4 +272,8 @@
     <string name="adapter_initialization_failed">"資料入口初始化失敗：%1$s"</string>
     <string name="filtering_skipped">"過濾已跳過：%1$s"</string>
     <string name="adapter_not_supported">"未找到相容的資料入口，需要適配此 X 版本"</string>
+    <string name="block_timeline_reposts">"遮蔽時間軸轉發"</string>
+    <string name="block_timeline_reposts_summary">"獨立於關鍵字、僅過濾回覆和白名單，移除轉發，保留引用貼文"</string>
+    <string name="category_reposts">"轉發"</string>
+    <string name="reason_repost">"時間軸轉發"</string>
 </resources>

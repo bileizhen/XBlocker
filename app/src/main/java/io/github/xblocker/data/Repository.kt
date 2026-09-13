@@ -51,7 +51,7 @@ class Repository(context: Context) {
     fun report(json: JSONObject) { synchronized(lock) {
         val previous = diagnostics()
         for (key in json.keys()) if (key in setOf("version", "hooks", "adapter", "pid", "fg", "seen", "filtered", "error", "responses", "rules", "rejected", "probe",
-                "envelopes", "jsonParsed", "entriesArrays", "entriesInspected", "tweets", "texts", "replies", "promoted", "blocked")) previous.put(key, json.opt(key))
+                "envelopes", "jsonParsed", "entriesArrays", "entriesInspected", "tweets", "texts", "replies", "promoted", "reposts", "blocked")) previous.put(key, json.opt(key))
         previous.put("lastSeen", System.currentTimeMillis())
         val records = history()
         val incoming = json.optJSONArray("events") ?: JSONArray()

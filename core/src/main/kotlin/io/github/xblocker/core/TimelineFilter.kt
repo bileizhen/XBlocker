@@ -19,6 +19,7 @@ class FilterStats {
     val texts = java.util.concurrent.atomic.AtomicLong()
     val replies = java.util.concurrent.atomic.AtomicLong()
     val promoted = java.util.concurrent.atomic.AtomicLong()
+    val reposts = java.util.concurrent.atomic.AtomicLong()
     val blocked = java.util.concurrent.atomic.AtomicLong()
     /** Field-name paths of the first recognized payloads; schema only, never values. */
     val fingerprint: MutableSet<String> = ConcurrentHashMap.newKeySet()
@@ -41,9 +42,10 @@ class FilterStats {
     fun toMap(): Map<String, Long> = mapOf(
         "responses" to responses.get(), "envelopes" to envelopes.get(), "jsonParsed" to jsonParsed.get(),
         "entriesArrays" to entriesArrays.get(), "entriesInspected" to entriesInspected.get(), "tweets" to tweets.get(),
-        "texts" to texts.get(), "replies" to replies.get(), "promoted" to promoted.get(), "blocked" to blocked.get())
+        "texts" to texts.get(), "replies" to replies.get(), "promoted" to promoted.get(),
+        "reposts" to reposts.get(), "blocked" to blocked.get())
     companion object {
-        private val INTERESTING = Regex("(?i)(tweet|entries|entry|content|item|module|result|legacy|full_text|user|core|promoted|typename|cursor|reply_to|conversation|rest_id)")
+        private val INTERESTING = Regex("(?i)(tweet|entries|entry|content|item|module|result|legacy|full_text|user|core|promoted|typename|cursor|reply_to|conversation|rest_id|social|context)")
     }
 }
 
@@ -115,13 +117,45 @@ class TimelineFilter(private val engine: RuleEngine, val stats: FilterStats = Fi
                 item.optJSONObject("promoted_metadata") != null ||
                 result?.optJSONObject("promoted_content") != null || result?.optJSONObject("legacy")?.optJSONObject("promoted_content") != null
             if (promoted) stats.promoted.incrementAndGet()
-            val hit = if (engine.settings.blockPromoted && promoted) Match("推广广告", "promotedMetadata", "推广") else tweet?.let(engine::match)
+            val repostSignal = if (container != null && tweet != null) repostSignal(result, container, item, content) else null
+            if (repostSignal != null) stats.reposts.incrementAndGet()
+            val hit = when {
+                engine.settings.blockPromoted && promoted -> Match("推广广告", "promotedMetadata", "推广")
+                engine.settings.blockReposts && repostSignal != null -> Match("时间线转帖", repostSignal, "转帖")
+                else -> tweet?.let(engine::match)
+            }
             if (hit != null) {
                 stats.blocked.incrementAndGet()
                 entries.remove(i)
                 events += BlockEvent(tweet?.id?.takeIf { it.isNotBlank() } ?: entryId, tweet?.handle.orEmpty(), hit.reason, hit.rule, hit.category)
             }
         }
+    }
+
+    /** Only inspect the outer tweet and its timeline context, never quoted/embedded tweets.
+     * `retweeted` is the viewer's action state and `retweet_count` is an engagement count;
+     * neither says that this timeline entry is a repost. Context text is localized/user-controlled.
+     */
+    private fun repostSignal(result: JSONObject?, vararg contexts: JSONObject): String? {
+        for (context in contexts) {
+            for (key in listOf("socialContext", "social_context")) {
+                val social = context.optJSONObject(key) ?: continue
+                val general = social.optJSONObject("generalContext") ?: social.optJSONObject("general_context") ?: social
+                if (general.optString("contextType").equals("Retweet", ignoreCase = true) ||
+                    general.optString("context_type").equals("Retweet", ignoreCase = true)) return "$key.Retweet"
+            }
+        }
+        val tweet = result?.let(::unwrapTweet) ?: return null
+        for (body in listOfNotNull(tweet.optJSONObject("legacy"), tweet.optJSONObject("details"), tweet)) {
+            // X 12.25 uses legacy.repostedStatusResults, without a social context label.
+            for (key in listOf("retweeted_status_result", "repostedStatusResults")) {
+                val original = body.optJSONObject(key)?.optJSONObject("result")
+                if (original != null && original.length() > 0) return key
+            }
+            val legacyOriginal = body.optJSONObject("retweeted_status")
+            if (legacyOriginal != null && legacyOriginal.length() > 0) return "retweeted_status"
+        }
+        return null
     }
 
     /**
@@ -147,7 +181,7 @@ class TimelineFilter(private val engine: RuleEngine, val stats: FilterStats = Fi
     }
 
     private fun readTweet(result: JSONObject): Tweet? {
-        val tweet = if (result.optString("__typename") == "TweetWithVisibilityResults") result.optJSONObject("tweet") ?: return null else result
+        val tweet = unwrapTweet(result) ?: return null
         // 12.16.3's new client moves text/reply metadata to details while retaining legacy.
         val bodies = listOfNotNull(tweet.optJSONObject("details"), tweet.optJSONObject("legacy"), tweet)
         fun statusField(key: String): String = bodies.asSequence().mapNotNull { it.opt(key) }
@@ -171,5 +205,8 @@ class TimelineFilter(private val engine: RuleEngine, val stats: FilterStats = Fi
             userCore?.optString("screen_name")?.takeIf { it.isNotEmpty() } ?: userLegacy?.optString("screen_name").orEmpty(),
             explicitReply || threadReply)
     }
+    private fun unwrapTweet(result: JSONObject): JSONObject? =
+        if (result.optString("__typename") == "TweetWithVisibilityResults") result.optJSONObject("tweet") else result
+
     companion object { const val MAX_CHARS = 8 * 1024 * 1024 }
 }

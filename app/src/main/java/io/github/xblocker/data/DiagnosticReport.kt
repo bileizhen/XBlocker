@@ -45,6 +45,7 @@ object DiagnosticReport {
             put("onlyReplies", state.settings.onlyReplies)
             put("checkNames", state.settings.checkNames)
             put("blockPromoted", state.settings.blockPromoted)
+            put("blockReposts", state.settings.blockReposts)
             put("cloudEnabled", state.settings.cloudEnabled)
             put("fluidCloud", state.fluidCloud)
             put("autoUpdate", state.autoUpdate)
@@ -57,7 +58,7 @@ object DiagnosticReport {
         }
         // Keep diagnostics explicit: never export stored rules, whitelist or tweet history.
         val diagnostics = JSONObject().apply {
-            for (key in listOf("lastSeen", "pid", "adapter", "responses", "seen", "filtered", "error")) {
+            for (key in listOf("lastSeen", "pid", "adapter", "responses", "seen", "filtered", "reposts", "error")) {
                 if (state.diagnostics.has(key)) put(key, state.diagnostics.get(key))
             }
         }

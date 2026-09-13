@@ -272,4 +272,8 @@
     <string name="adapter_initialization_failed">"Unable to initialize the data adapter: %1$s"</string>
     <string name="filtering_skipped">"Filtering skipped: %1$s"</string>
     <string name="adapter_not_supported">"No compatible data adapter found. This X version needs support."</string>
+    <string name="block_timeline_reposts">"Block timeline reposts"</string>
+    <string name="block_timeline_reposts_summary">"Remove reposts independently of keywords, reply-only mode and the whitelist; keep quote posts"</string>
+    <string name="category_reposts">"Reposts"</string>
+    <string name="reason_repost">"Timeline repost"</string>
 </resources>
