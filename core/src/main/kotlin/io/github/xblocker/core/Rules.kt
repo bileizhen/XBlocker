@@ -15,6 +15,7 @@ data class FilterSettings(
     val customRules: String = "",
     val whitelist: Set<String> = emptySet(),
     val blockReposts: Boolean = false,
+    val preserveProfileReposts: Boolean = true,
 )
 
 object RuleParser {

@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="hide_launcher_icon">"Hide launcher icon"</string>
+    <string name="hide_launcher_icon_summary">"Open XBlocker from LSPosed to restore the icon. Your launcher may take a moment to refresh."</string>
+    <string name="unable_to_change_launcher_icon">"Unable to change launcher icon visibility. Please try again."</string>
     <string name="third_party_sources_and_modifications">"Third-party sources and modifications"</string>
     <string name="xblocker_original_code_mit">"XBlocker original code · MIT"</string>
     <string name="cloud_rules_mit">"Cloud rules · MIT"</string>
@@ -274,6 +277,8 @@
     <string name="adapter_not_supported">"No compatible data adapter found. This X version needs support."</string>
     <string name="block_timeline_reposts">"Block timeline reposts"</string>
     <string name="block_timeline_reposts_summary">"Remove reposts independently of keywords, reply-only mode and the whitelist; keep quote posts"</string>
+    <string name="preserve_profile_reposts">"Keep profile reposts"</string>
+    <string name="preserve_profile_reposts_summary">"Keep reposts on user profiles when timeline repost blocking is enabled"</string>
     <string name="category_reposts">"Reposts"</string>
     <string name="reason_repost">"Timeline repost"</string>
 </resources>

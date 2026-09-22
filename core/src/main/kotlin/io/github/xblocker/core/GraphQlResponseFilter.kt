@@ -3,7 +3,7 @@ package io.github.xblocker.core
 import java.net.URI
 
 /** Uses the host's OkHttp without packaging a second copy of it in the module. */
-class GraphQlResponseFilter(loader: ClassLoader, private val transform: (String) -> String) {
+class GraphQlResponseFilter(loader: ClassLoader, private val transform: (String, String) -> String) {
     private val response = loader.loadClass("okhttp3.Response")
     private val body = loader.loadClass("okhttp3.ResponseBody")
     private val mediaType = loader.loadClass("okhttp3.MediaType")
@@ -42,7 +42,7 @@ class GraphQlResponseFilter(loader: ClassLoader, private val transform: (String)
         if (input.size > TimelineFilter.MAX_CHARS) return original
         val text = input.toString(Charsets.UTF_8)
         if (!text.toByteArray(Charsets.UTF_8).contentEquals(input)) return original
-        val output = transform(text)
+        val output = transform(text, uri.path.substringAfterLast('/'))
         if (output == text) return original
         val replacement = create.invoke(null, type, output.toByteArray(Charsets.UTF_8))
         val updated = try {

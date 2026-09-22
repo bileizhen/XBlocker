@@ -11,6 +11,7 @@ import io.github.xblocker.core.RuleParser
 import io.github.xblocker.data.CloudSync
 import io.github.xblocker.data.AppUpdates
 import io.github.xblocker.data.Repository
+import io.github.xblocker.data.LauncherIcon
 import io.github.xblocker.data.InstallResult
 import io.github.xblocker.data.UpdateDownloadState
 import io.github.xblocker.data.UpdateSource
@@ -40,6 +41,7 @@ data class UiState(
     val colorMode: Int = 0,
     val appearance: AppearanceSettings = AppearanceSettings(),
     val autoUpdate: Boolean = true,
+    val launcherIconHidden: Boolean = false,
     val updateChannel: Int = 0,
     val message: String = "",
 )
@@ -128,6 +130,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         mutable.value = mutable.value.copy(autoUpdate = enabled)
     }
 
+    fun setLauncherIconHidden(hidden: Boolean) {
+        runCatching { LauncherIcon.setHidden(context, hidden) }
+            .onSuccess {
+                mutable.value = mutable.value.copy(launcherIconHidden = LauncherIcon.isHidden(context))
+            }
+            .onFailure { message(context.getString(R.string.unable_to_change_launcher_icon)) }
+    }
+
     fun setUpdateChannel(channel: Int) {
         if (channel == mutable.value.updateChannel) return
         repo.setUpdateChannel(channel)
@@ -211,7 +221,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 history = (history.length() - 1 downTo 0).map { history.getJSONObject(it) })
         }
         mutable.value = next.copy(syncing = mutable.value.syncing, message = mutable.value.message,
-            appearance = repo.appearance(), colorMode = repo.colorMode())
+            appearance = repo.appearance(), colorMode = repo.colorMode(),
+            launcherIconHidden = LauncherIcon.isHidden(context))
         if (next.ready) runCatching { evaluateScopePrompt() }
     }
     fun update(change: (FilterSettings) -> FilterSettings) { viewModelScope.launch {

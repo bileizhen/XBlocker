@@ -19,7 +19,37 @@ class GraphQlResponseFilterTest {
         Response.Builder().request(Request.Builder().url(url).build()).protocol(Protocol.HTTP_2)
             .code(200).message("OK").header("Content-Length", "999").header("X-Test", "keep")
             .body(body).build()
-    private fun adapter(transform: (String) -> String) = GraphQlResponseFilter(javaClass.classLoader, transform)
+    private fun adapter(transform: (String) -> String) = GraphQlResponseFilter(javaClass.classLoader) { text, _ -> transform(text) }
+
+    @Test fun `network operation scopes repost filtering without leaking between requests`() {
+        val input = """{"data":{"timeline_response":{"timeline":{"instructions":[{"entries":[
+            {"entry_id":"tweet-1","content":{"content":{"tweet_results":{"result":{
+                "rest_id":"1","legacy":{"full_text":"hello","repostedStatusResults":{"result":{"rest_id":"2"}}}
+            }}}}}
+        ]}]}}}}"""
+        val timeline = TimelineFilter(RuleEngine(FilterSettings(blockReposts = true), ""))
+        val operations = mutableListOf<String>()
+        val filter = GraphQlResponseFilter(javaClass.classLoader) { text, operation ->
+            operations += operation
+            timeline.filter(text, operation).json
+        }
+        val expected = listOf("HomeTimeline", "UserProfileRepostsTimelineQuery", "HomeTimelineLatest", "UserTweets")
+        for (operation in expected) {
+            val original = response(input.toResponseBody(jsonType),
+                "https://api.x.com/graphql/query/$operation?variables=%7B%7D")
+            val result = filter.filter(original) as Response
+            if (operation.startsWith("Home")) {
+                assertNotSame(original, result)
+                assertFalse(result.body!!.string().contains("tweet-1"))
+            } else {
+                assertSame(original, result)
+                assertEquals(input, result.body!!.string())
+            }
+            result.close()
+        }
+        assertEquals(expected, operations)
+        assertEquals(2, timeline.stats.blocked.get())
+    }
 
     @Test fun `filters a network timeline and preserves status headers and cursors`() {
         val input = """{"data":{"timeline":{"instructions":[{"entries":[

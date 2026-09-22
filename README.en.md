@@ -38,6 +38,7 @@ The code is hosted on [GitHub](https://github.com/bileizhen/XBlocker) and also p
 - Filters replies by default, with optional filtering for Home and Search timelines
 - Display names, usernames, promoted content and rule categories can be toggled independently
 - Optional timeline repost blocking (off by default) removes reposts and keeps quote posts, independently of reply-only mode, keywords and the allowlist
+- Keep profile reposts (on by default) preserves user-profile reposts when timeline repost blocking is enabled; turn it off to block profile reposts too
 - Supports keywords, `/regex/flags` and an @username allowlist
 - Rules can be imported, exported and tested in the app
 - Cloud rules sync with [x-comment-blocker](https://github.com/amahteru/x-comment-blocker), with a bundled offline snapshot and manual or scheduled updates
@@ -64,6 +65,7 @@ The code is hosted on [GitHub](https://github.com/bileizhen/XBlocker) and also p
 ### Interface and languages
 
 - Miuix interface with light and dark themes, Monet colors, blur, Liquid Glass, predictive back gestures and global display scaling
+- Hide the launcher icon in Settings; open XBlocker from LSPosed and turn the switch off to restore it
 - Simplified Chinese, Traditional Chinese, English and a follow-system option, switchable in Settings; Android 13 and later also support the system's per-app language settings
 
 ## Compatibility

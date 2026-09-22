@@ -76,6 +76,13 @@ internal fun LazyListScope.settingsItems(
                 title = resources.getString(R.string.appearance), summary = resources.getString(R.string.theme_colors_and_interface_effects),
                 startAction = { SettingsIcon(Icons.Rounded.Palette) }, onClick = onOpenTheme,
             )
+            SwitchPreference(
+                title = resources.getString(R.string.hide_launcher_icon),
+                summary = resources.getString(R.string.hide_launcher_icon_summary),
+                startAction = { SettingsIcon(Icons.Rounded.Cottage) },
+                checked = state.launcherIconHidden,
+                onCheckedChange = vm::setLauncherIconHidden,
+            )
         }
     }
     item {
@@ -104,6 +111,13 @@ internal fun LazyListScope.settingsItems(
                 startAction = { SettingsIcon(Icons.Rounded.Block) },
                 checked = state.settings.blockReposts,
                 onCheckedChange = { value -> vm.update { it.copy(blockReposts = value) } },
+            )
+            SwitchPreference(
+                title = resources.getString(R.string.preserve_profile_reposts),
+                summary = resources.getString(R.string.preserve_profile_reposts_summary),
+                startAction = { SettingsIcon(Icons.Rounded.ContactPage) },
+                checked = state.settings.preserveProfileReposts,
+                onCheckedChange = { value -> vm.update { it.copy(preserveProfileReposts = value) } },
             )
         }
     }

@@ -142,7 +142,7 @@ class XHook : IXposedHookLoadPackage {
         }
 
         private fun installNetwork() {
-            val responseFilter = GraphQlResponseFilter(loader, ::transform)
+            val responseFilter = GraphQlResponseFilter(loader) { input, operation -> transform(input, operation) }
             val call = loader.loadClass("okhttp3.internal.connection.RealCall")
             val method = call.getDeclaredMethod("getResponseWithInterceptorChain\$okhttp")
             check(method.returnType == loader.loadClass("okhttp3.Response"))
@@ -244,9 +244,11 @@ class XHook : IXposedHookLoadPackage {
             runCatching { bridgeExecutor.schedule({ if (fgReportTicket.get() == ticket) refreshAndReport() }, 400, TimeUnit.MILLISECONDS) }
         }
 
-        private fun transform(input: String): String {
+        private fun transform(input: String): String = transform(input, null)
+
+        private fun transform(input: String, operation: String?): String {
             responses.incrementAndGet()
-            val result = filter?.filter(input) ?: return input
+            val result = filter?.filter(input, operation) ?: return input
             if (result.recognized) seen.incrementAndGet()
             filtered.addAndGet(result.events.size.toLong())
             result.events.forEach { event -> if (queue.size < 100) queue.add(JSONObject()

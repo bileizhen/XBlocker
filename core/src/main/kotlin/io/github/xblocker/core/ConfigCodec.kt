@@ -9,6 +9,7 @@ object ConfigCodec {
         put("onlyReplies", settings.onlyReplies); put("checkNames", settings.checkNames)
         put("blockPromoted", settings.blockPromoted); put("customRules", settings.customRules)
         put("blockReposts", settings.blockReposts)
+        put("preserveProfileReposts", settings.preserveProfileReposts)
         put("disabledCategories", JSONArray(settings.disabledCategories.toList()))
         put("whitelist", JSONArray(settings.whitelist.toList()))
     }
@@ -19,6 +20,7 @@ object ConfigCodec {
         disabledCategories = if (json.has("disabledCategories")) strings(json.optJSONArray("disabledCategories")) else setOf("仇恨用语"),
         whitelist = strings(json.optJSONArray("whitelist")),
         blockReposts = json.optBoolean("blockReposts", false),
+        preserveProfileReposts = json.optBoolean("preserveProfileReposts", true),
     )
     private fun strings(array: JSONArray?): Set<String> = if (array == null) emptySet() else
         (0 until array.length()).map { array.optString(it) }.filter { it.isNotBlank() }.toSet()

@@ -53,7 +53,7 @@ class FilterStats {
 class TimelineFilter(private val engine: RuleEngine, val stats: FilterStats = FilterStats()) {
     val ruleCount: Int get() = engine.count
     val rejectedCount: Int get() = engine.rejected.size
-    fun filter(input: String): FilterResult {
+    fun filter(input: String, operation: String? = null): FilterResult {
         stats.responses.incrementAndGet()
         if (!engine.settings.enabled || input.length > MAX_CHARS || !input.contains("\"entries\"") &&
             !input.contains("\"moduleItems\"")) return FilterResult(input, emptyList(), false)
@@ -63,31 +63,37 @@ class TimelineFilter(private val engine: RuleEngine, val stats: FilterStats = Fi
             stats.jsonParsed.incrementAndGet()
             val events = mutableListOf<BlockEvent>()
             var recognized = false
-            fun visit(node: Any?, depth: Int) {
+            fun visit(node: Any?, depth: Int, inProfile: Boolean) {
                 if (depth > 40) return
                 when (node) {
                     is JSONObject -> {
                         for (key in node.keys().asSequence().toList()) {
                             val value = node.opt(key)
+                            // Profile tabs use the same timeline_response/entries shape as Home.
+                            // Keep this scope local to the branch, including paginated module items.
+                            val profile = inProfile || key in PROFILE_KEYS
                             if (value is JSONArray && key in setOf("entries", "moduleItems")) {
                                 stats.entriesArrays.incrementAndGet()
                                 stats.takeFingerprint(value)
                                 if ((0 until value.length()).any { i -> value.optJSONObject(i)?.let { it.has("entryId") || it.has("entry_id") } == true }) {
                                     recognized = true
                                 }
-                                filterEntries(value, events)
-                            } else if (key !in setOf("quoted_status_result", "retweeted_status_result", "user_results", "tweet_results")) visit(value, depth + 1)
+                                filterEntries(value, events, !profile || !engine.settings.preserveProfileReposts)
+                            } else if (key !in setOf("quoted_status_result", "retweeted_status_result", "user_results", "tweet_results")) {
+                                visit(value, depth + 1, profile)
+                            }
                         }
                     }
-                    is JSONArray -> for (i in 0 until node.length()) visit(node.opt(i), depth + 1)
+                    is JSONArray -> for (i in 0 until node.length()) visit(node.opt(i), depth + 1, inProfile)
                 }
             }
-            visit(root, 0)
+            visit(root, 0, operation?.startsWith("User") == true || operation?.startsWith("Profile") == true ||
+                operation == "ImmersiveViewerProfileMixerTimeline")
             FilterResult(if (events.isEmpty()) input else root.toString(), events, recognized)
         } catch (_: Exception) { FilterResult(input, emptyList(), false) }
     }
 
-    private fun filterEntries(entries: JSONArray, events: MutableList<BlockEvent>) {
+    private fun filterEntries(entries: JSONArray, events: MutableList<BlockEvent>, allowReposts: Boolean) {
         for (i in entries.length() - 1 downTo 0) {
             val entry = entries.optJSONObject(i) ?: continue
             stats.entriesInspected.incrementAndGet()
@@ -95,7 +101,7 @@ class TimelineFilter(private val engine: RuleEngine, val stats: FilterStats = Fi
             val items = content.optJSONArray("items")
             if (items != null) {
                 val originalCount = items.length()
-                filterEntries(items, events)
+                filterEntries(items, events, allowReposts)
                 if (originalCount > 0 && items.length() == 0) entries.remove(i)
                 continue
             }
@@ -121,7 +127,7 @@ class TimelineFilter(private val engine: RuleEngine, val stats: FilterStats = Fi
             if (repostSignal != null) stats.reposts.incrementAndGet()
             val hit = when {
                 engine.settings.blockPromoted && promoted -> Match("推广广告", "promotedMetadata", "推广")
-                engine.settings.blockReposts && repostSignal != null -> Match("时间线转帖", repostSignal, "转帖")
+                engine.settings.blockReposts && allowReposts && repostSignal != null -> Match("时间线转帖", repostSignal, "转帖")
                 else -> tweet?.let(engine::match)
             }
             if (hit != null) {
@@ -208,5 +214,9 @@ class TimelineFilter(private val engine: RuleEngine, val stats: FilterStats = Fi
     private fun unwrapTweet(result: JSONObject): JSONObject? =
         if (result.optString("__typename") == "TweetWithVisibilityResults") result.optJSONObject("tweet") else result
 
-    companion object { const val MAX_CHARS = 8 * 1024 * 1024 }
+    companion object {
+        const val MAX_CHARS = 8 * 1024 * 1024
+        // Parser fallbacks have no request URL; profile timelines are nested under a user.
+        private val PROFILE_KEYS = setOf("user", "user_result", "user_results", "profile_timeline", "profile_timeline_v2")
+    }
 }

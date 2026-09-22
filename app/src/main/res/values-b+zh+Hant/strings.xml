@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="hide_launcher_icon">"隱藏桌面圖示"</string>
+    <string name="hide_launcher_icon_summary">"隱藏後可從 LSPosed 開啟 XBlocker，關閉此開關恢復圖示。桌面可能稍後重新整理。"</string>
+    <string name="unable_to_change_launcher_icon">"無法變更桌面圖示顯示狀態，請重試。"</string>
     <string name="third_party_sources_and_modifications">"第三方來源與修改說明"</string>
     <string name="xblocker_original_code_mit">"XBlocker 原有程式碼 · MIT"</string>
     <string name="cloud_rules_mit">"雲端詞庫 · MIT"</string>
@@ -274,6 +277,8 @@
     <string name="adapter_not_supported">"未找到相容的資料入口，需要適配此 X 版本"</string>
     <string name="block_timeline_reposts">"遮蔽時間軸轉發"</string>
     <string name="block_timeline_reposts_summary">"獨立於關鍵字、僅過濾回覆和白名單，移除轉發，保留引用貼文"</string>
+    <string name="preserve_profile_reposts">"保留使用者個人頁面轉發"</string>
+    <string name="preserve_profile_reposts_summary">"開啟屏蔽時間軸轉發時，仍保留使用者個人頁面中的轉發"</string>
     <string name="category_reposts">"轉發"</string>
     <string name="reason_repost">"時間軸轉發"</string>
 </resources>

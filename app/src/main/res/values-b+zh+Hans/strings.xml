@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="hide_launcher_icon">"隐藏桌面图标"</string>
+    <string name="hide_launcher_icon_summary">"隐藏后可从 LSPosed 打开 XBlocker，关闭此开关恢复图标。桌面可能稍后刷新。"</string>
+    <string name="unable_to_change_launcher_icon">"无法更改桌面图标显示状态，请重试。"</string>
     <string name="third_party_sources_and_modifications">"第三方来源与修改说明"</string>
     <string name="xblocker_original_code_mit">"XBlocker 原有代码 · MIT"</string>
     <string name="cloud_rules_mit">"云端词库 · MIT"</string>
@@ -274,6 +277,8 @@
     <string name="adapter_not_supported">"未找到兼容的数据入口，需要适配此 X 版本"</string>
     <string name="block_timeline_reposts">"屏蔽时间线转帖"</string>
     <string name="block_timeline_reposts_summary">"独立于关键词、仅过滤回复和白名单，移除转帖，保留引用帖"</string>
+    <string name="preserve_profile_reposts">"保留用户主页转帖"</string>
+    <string name="preserve_profile_reposts_summary">"开启屏蔽时间线转帖时，仍保留用户主页中的转帖"</string>
     <string name="category_reposts">"转帖"</string>
     <string name="reason_repost">"时间线转帖"</string>
 </resources>
