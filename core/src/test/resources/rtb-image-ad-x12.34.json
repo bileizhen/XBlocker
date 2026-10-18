@@ -1,0 +1,65 @@
+{
+  "data": {
+    "timelineResponse": {
+      "instructions": [
+        {
+          "type": "TimelineAddEntries",
+          "entries": [
+            {
+              "entry_id": "module-1",
+              "content": {
+                "items": [
+                  {
+                    "entry_id": "conversationthread-0000000000000000000-rtb-image-ad-IS1:redacted-Some(IS1:redacted)",
+                    "item": {
+                      "content": {
+                        "__typename": "TimelineRtbImageAd",
+                        "creative_id": "default-dsp-creative-id",
+                        "landing_url": {
+                          "url": "emptyLandingUrl"
+                        },
+                        "rtb_image": {
+                          "height": 0,
+                          "url": "GoogleSDKNativeAd",
+                          "width": 0
+                        },
+                        "rtb_promoted_metadata": {
+                          "advertiser_results": {
+                            "rest_id": "0"
+                          },
+                          "impression_id": "redacted",
+                          "impression_string": "redacted",
+                          "rtb_ad_metadata": {
+                            "dsp_id": "Google",
+                            "response_content": "{\"app_id\":\"com.vincentb.MobControl\",\"title\":\"Mob Control\"}"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "entry_id": "tweet-2",
+                    "item": {
+                      "content": {
+                        "__typename": "TimelineTweet",
+                        "tweet_results": {
+                          "result": {
+                            "__typename": "Tweet",
+                            "rest_id": "2",
+                            "legacy": {
+                              "full_text": "normal post"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
