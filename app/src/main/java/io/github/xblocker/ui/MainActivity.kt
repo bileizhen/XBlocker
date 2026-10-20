@@ -429,6 +429,7 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
                                 })
                                 BasicComponent(title = resources.getString(R.string.data_adapter), summary = state.diagnostics.optString("adapter").ifEmpty { resources.getString(R.string.waiting_for_x_to_start) })
                                 BasicComponent(title = resources.getString(R.string.current_x_process), summary = resources.getString(R.string.parsed_timelines_removed, state.diagnostics.optLong("responses"), state.diagnostics.optLong("seen"), state.diagnostics.optLong("filtered")))
+                                SspDiagnosticComponents(resources, state.diagnostics)
                                 if (state.diagnostics.optString("error").isNotBlank()) BasicComponent(title = resources.getString(R.string.compatibility_note), summary = io.github.xblocker.i18n.LocalizedText.resolve(context, state.diagnostics.optString("error")))
                                 if (state.marker.optLong("lastSeen") != 0L) BasicComponent(title = resources.getString(R.string.activation_marker), summary = buildString {
                                     append(when (state.marker.optString("phase")) {
@@ -542,6 +543,7 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
             }
         }
         PreviewDialog(preview, state, onDismiss = { preview = false })
+        UpdateResultDialog(state.activation, vm::dismissActivation, vm::retryActivation)
         SendLogDialog(showLogDialog, state, onDismissRequest = { showLogDialog = false })
         SuperDialog(show = showOemGuide, title = resources.getString(R.string.startup_guide_title),
             summary = resources.getString(R.string.startup_guide_summary), onDismissRequest = { dismissOemGuide() }) {

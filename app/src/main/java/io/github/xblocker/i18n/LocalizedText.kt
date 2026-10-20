@@ -25,6 +25,7 @@ object LocalizedText {
             "昵称" -> R.string.field_name
             "推广" -> R.string.category_promoted
             "推广广告" -> R.string.reason_promoted
+            "视频广告" -> R.string.category_video_ads
             "转帖" -> R.string.category_reposts
             "时间线转帖" -> R.string.reason_repost
             "规则超过 1000 字符" -> R.string.rule_too_long

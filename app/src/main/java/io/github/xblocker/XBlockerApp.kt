@@ -19,5 +19,6 @@ class XBlockerApp : Application() {
         // Also re-issued by GrantReceiver after APK updates clear the persisted grant.
         BridgeVisibility.grant(this)
         CloudSync.schedule(this)
+        io.github.xblocker.data.UpdateActivation.recoverQueued(this)
     }
 }

@@ -29,6 +29,19 @@ class HistoryPresentationTest {
         assertTrue(records.none { it.matches("[.*") })
     }
 
+    @Test fun videoAdSlotsHaveTheirOwnFilterAndNeverOfferAccountAllowlisting() {
+        val records = historyRecords(listOf(
+            event("ssp-slot", category = "视频广告", reason = "视频广告", rule = "SSP:slot-1"),
+            event("reason-only", category = "", reason = "视频广告", handle = ""),
+            event("promoted", category = "推广", reason = "推广广告"),
+            event("rule", rule = "SSP:example"),
+        ))
+        assertEquals(listOf(HistoryFilter.VideoAds, HistoryFilter.VideoAds, HistoryFilter.Promoted,
+            HistoryFilter.Rules), records.map { it.kind })
+        assertEquals(listOf(false, false, false, true), records.map { it.canAllowlist })
+        assertEquals("ssp-slot", records.single { it.matches("SSP:slot-1") }.id)
+    }
+
     @Test fun refreshedEventsRetainKeysWhenNewRecordsArrive() {
         val before = historyRecords(listOf(event(), event("2", time = 2000)))
         val after = historyRecords(listOf(event("3", time = 3000), event("2", time = 2000), event()))

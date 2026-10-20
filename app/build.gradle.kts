@@ -11,8 +11,8 @@ android {
         applicationId = "io.github.bileizhen.xblocker"
         minSdk = 28
         targetSdk = 36
-        versionCode = 20
-        versionName = "0.3.4"
+        versionCode = 24
+        versionName = "0.3.5"
         // The LSPosed repository requires a no-domain package to use the GitHub username.
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Supplied by Xiaomi after the app's Super Island service is enabled.
@@ -30,6 +30,7 @@ android {
     packaging { resources.excludes += setOf("META-INF/DEPENDENCIES", "META-INF/LICENSE*", "META-INF/NOTICE*") }
 }
 dependencies {
+    implementation("org.luckypray:dexkit:2.3.0")
     implementation(project(":core")) { exclude(group = "org.json", module = "json") }
     implementation("androidx.activity:activity-compose:1.12.1")
     implementation("androidx.navigation3:navigation3-runtime:1.1.4")

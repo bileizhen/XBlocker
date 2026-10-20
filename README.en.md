@@ -24,7 +24,15 @@ An LSPosed filtering module for the native X client on Android
 
 XBlocker is an LSPosed filtering module for the native X client on Android. It matches rules locally on your device to hide spam replies, promoted content and selected categories, all inside the X process without sending content to any server.
 
-The module looks for the OkHttp GraphQL entry point first and falls back to Jackson / LoganSquare when needed. The filtering adapter is chosen from the host's actual interfaces rather than a fixed X version, and unrecognized structures pass through unchanged.
+The module looks for the known OkHttp GraphQL entry point first, uses DexKit feature matching and caching when that entry is unavailable, and falls back to Jackson / LoganSquare when needed. Unrecognized structures pass through unchanged.
+
+Block promoted ads also controls SSP policy disabling, video ad-slot filtering and shared timeline-state filtering. History has a Video ads category; diagnostics show adapter status and actual removed slots. Discovery, hook installation and live policy interception have been checked on X 12.35.0; complete video-feed and cached-slot removal acceptance remains pending.
+
+DexKit locates media menus, current media models and fields by stable features without a host-version allowlist. Results are cached by APK fingerprint and invalidated by package or matching-policy changes. APK discovery has passed for 12.16.3, 12.19.1, 12.23.1 and 12.35.0; real image/video downloads have been checked on 12.35.0. Older or future architecture changes can still require adaptation; unmatched menus retain their original behavior.
+
+Native media viewer menus support downloading the current image or video to `/storage/emulated/0/Download/X/`, using X's own download icon. Some older builds retain the native Save label. Images use original size; videos use the highest-bitrate available MP4. Android 10 or newer requires no storage permission and supports background downloads with completion notifications. Live streams, external YouTube videos and HLS-only media are unsupported. Per-file limits are 32 MiB for images and 512 MiB for videos.
+
+After an APK update, the app discovers the entry point and shows the host/module versions, scan or cache results, and activation status. Fully close and reopen X after updating module code. No Root access is requested.
 
 The code is hosted on [GitHub](https://github.com/bileizhen/XBlocker) and also published to the [LSPosed module repository](https://github.com/Xposed-Modules-Repo/io.github.bileizhen.xblocker).
 
@@ -76,7 +84,7 @@ The code is hosted on [GitHub](https://github.com/bileizhen/XBlocker) and also p
 | --- | --- |
 | Android | 9 (API 28) and later |
 | Framework | LSPosed API 101 |
-| Verified X versions | `12.16.3-release.0`, `12.23.1-prod.01` |
+| Verified X versions | `12.16.3-release.0`, `12.23.1-prod.01`, `12.35.0-prod.01` (on-device media download verification for this update) |
 
 ## Installation
 
@@ -115,7 +123,7 @@ XBlocker guides you through enabling autostart and live activities on first laun
 ## Privacy
 
 - Rules are matched locally on your device. Tweet text, account credentials, custom rules and the allowlist are not uploaded.
-- Network access is used only for public rule lists, GitHub version checks and update downloads you choose.
+- Network access is used only for public rule lists, GitHub version checks, update downloads you choose, and image/video downloads you initiate from the X media menu (public X media CDNs).
 - Diagnostic ZIP archives do not include custom rules, the allowlist or block history.
 
 ## Building from source

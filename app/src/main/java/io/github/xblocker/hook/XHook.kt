@@ -13,6 +13,7 @@ import de.robv.android.xposed.XposedBridge
 import de.robv.android.xposed.XposedHelpers
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 import io.github.xblocker.core.ConfigCodec
+import io.github.xblocker.BuildConfig
 import io.github.xblocker.core.GraphQlResponseFilter
 import io.github.xblocker.core.ReplayInput
 import io.github.xblocker.core.RuleEngine
@@ -103,6 +104,12 @@ class XHook : IXposedHookLoadPackage {
         private var lastSnapshot = ""
         private var hooks = 0
         private var adapter = ""
+        private var scanReport: DexKitScanReport? = null
+        private var mediaDownload: MediaDownloadHook? = null
+        private var sspAds: SspAdHook? = null
+        private val sspSlotLedger = SspSlotLedger()
+        private val sspBlocked = AtomicLong()
+        @Volatile private var blockPromoted = false
         @Volatile private var error = ""
         private var lastBridgeLog = 0L
         @Volatile private var prefsFallbackLogged = false
@@ -112,6 +119,24 @@ class XHook : IXposedHookLoadPackage {
         private val bridgeExecutor = Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "XBlocker-bridge").apply { isDaemon = true } }
 
         fun start() {
+            // Load the existing switch before SSP policy decisions during host startup.
+            runCatching { applySnapshot(prefsSnapshot()) }
+            // Install before Application.attach returns so first-page requests and cached states
+            // cannot race an asynchronous scan. Discovery is fingerprint-cached after this update.
+            runCatching { SspAdHook(context, loader, { SspSlotPolicy.enabled(enabled, blockPromoted) }) { id ->
+                    if (sspSlotLedger.record(id)) {
+                        sspBlocked.incrementAndGet()
+                        filtered.incrementAndGet()
+                        stats.promoted.incrementAndGet()
+                        stats.blocked.incrementAndGet()
+                        if (queue.size < 100) queue.add(JSONObject().put("id", "ssp:$id").put("handle", "")
+                            .put("reason", "视频广告").put("category", "视频广告").put("rule", "SSP:immersive-slot"))
+                    }
+            }.also { sspAds = it }.install() }
+                .onFailure { XposedBridge.log("XBlocker.SSP: initialization skipped: ${it.javaClass.simpleName}") }
+            Thread({ runCatching { MediaDownloadHook(context, loader).also { mediaDownload = it }.install() }
+                .onFailure { XposedBridge.log("XBlocker.Media: initialization skipped: ${it.javaClass.simpleName}") }
+            }, "XBlocker-media-scan").apply { isDaemon = true }.start()
             // Whether X currently shows any activity; drives fluid-cloud capsule visibility.
             // Cross-activity transitions debounce out: the delayed report always reads the
             // live counter, and only the newest boundary schedules a report.
@@ -137,15 +162,17 @@ class XHook : IXposedHookLoadPackage {
             }
             if (hooks == 0 && error.isEmpty()) error = "未找到兼容的数据入口，需要适配此 X 版本"
             XposedBridge.log("XBlocker: adapter=$adapter hooks=$hooks")
-            sendMarker(context, JSONObject().put("phase", "started").put("hooks", hooks).put("adapter", adapter).put("error", error))
+            sendMarker(context, JSONObject().put("phase", "started").put("hooks", hooks).put("adapter", adapter).put("error", error)
+                .put("moduleVersion", BuildConfig.VERSION_NAME).put("moduleCode", BuildConfig.VERSION_CODE)
+                .put("scanReport", scanReport?.toJson()))
             bridgeExecutor.scheduleWithFixedDelay({ refreshAndReport() }, 0, 5, TimeUnit.SECONDS)
         }
 
         private fun installNetwork() {
             val responseFilter = GraphQlResponseFilter(loader) { input, operation -> transform(input, operation) }
-            val call = loader.loadClass("okhttp3.internal.connection.RealCall")
-            val method = call.getDeclaredMethod("getResponseWithInterceptorChain\$okhttp")
-            check(method.returnType == loader.loadClass("okhttp3.Response"))
+            val resolution = DexKitLocator.resolve(context, loader)
+            scanReport = resolution.report
+            val method = checkNotNull(resolution.method) { resolution.report.details }
             XposedBridge.hookMethod(method, object : XC_MethodHook() {
                 override fun afterHookedMethod(p: MethodHookParam) {
                     if (!enabled || p.hasThrowable()) return
@@ -251,8 +278,13 @@ class XHook : IXposedHookLoadPackage {
             val result = filter?.filter(input, operation) ?: return input
             if (result.recognized) seen.incrementAndGet()
             filtered.addAndGet(result.events.size.toLong())
-            result.events.forEach { event -> if (queue.size < 100) queue.add(JSONObject()
-                .put("id", event.id).put("handle", event.handle).put("reason", event.reason).put("rule", event.rule).put("category", event.category)) }
+            result.events.forEach { event ->
+                val ssp = event.category == "视频广告"
+                if (ssp && !sspSlotLedger.record(event.id)) return@forEach
+                if (ssp) sspBlocked.incrementAndGet()
+                if (queue.size < 100) queue.add(JSONObject().put("id", if (ssp) "ssp:${event.id}" else event.id)
+                    .put("handle", event.handle).put("reason", event.reason).put("rule", event.rule).put("category", event.category))
+            }
             return result.json
         }
 
@@ -262,6 +294,13 @@ class XHook : IXposedHookLoadPackage {
                 applySnapshot(snapshot)
                 val batch = queue.toList().take(100)
                 val report = JSONObject().put("hooks", hooks).put("adapter", adapter).put("pid", Process.myPid())
+                    .put("moduleVersion", BuildConfig.VERSION_NAME).put("moduleCode", BuildConfig.VERSION_CODE)
+                    .put("scanReport", scanReport?.toJson())
+                    .put("mediaDownload", mediaDownload?.status ?: "unavailable")
+                    .put("mediaScan", mediaDownload?.scanReport)
+                    .put("sspAds", sspAds?.status ?: "scanning").put("sspScan", sspAds?.scanReport)
+                    .put("sspPolicyCalls", sspAds?.policyCalls?.get() ?: 0)
+                    .put("sspSlots", sspAds?.slots?.get() ?: 0).put("sspBlocked", sspBlocked.get())
                     .put("version", context.packageManager.getPackageInfo(context.packageName, 0).versionName)
                     .put("fg", resumed.get() > 0)
                     .put("lastSeen", System.currentTimeMillis())
@@ -307,6 +346,7 @@ class XHook : IXposedHookLoadPackage {
             val settings = ConfigCodec.decode(json.getJSONObject("settings"))
             filter = TimelineFilter(RuleEngine(settings, json.getString("cloud")), stats)
             enabled = settings.enabled
+            blockPromoted = settings.blockPromoted
             nativeStatus = json.optBoolean("fluidCloud", false)
             focusStatus = json.optBoolean("focusNotification", false)
             lastSnapshot = snapshot

@@ -24,6 +24,7 @@ private fun licenses(resources: android.content.res.Resources) = listOf(
     resources.getString(R.string.third_party_sources_and_modifications) to "THIRD_PARTY_NOTICES.md",
     "SukiSU · GNU GPL v3" to "licenses/SukiSU-GPL-3.0.txt",
     "Miuix / AndroidX · Apache 2.0" to "licenses/Apache-2.0.txt",
+    "DexKit Core · GNU LGPL v3" to "licenses/DexKit-LGPL-3.0.txt",
     resources.getString(R.string.xblocker_original_code_mit) to "licenses/XBlocker-MIT.txt",
     resources.getString(R.string.cloud_rules_mit) to "UPSTREAM-LICENSE.txt",
 )

@@ -117,7 +117,8 @@ class TimelineFilter(private val engine: RuleEngine, val stats: FilterStats = Fi
                 if (tweet.text.isNotBlank()) stats.texts.incrementAndGet()
                 if (tweet.isReply) stats.replies.incrementAndGet()
             }
-            val promoted = container?.optJSONObject("promotedMetadata") != null || container?.optJSONObject("tweetPromotedMetadata") != null ||
+            val sspSlot = isSspSlot(item) || isSspSlot(content)
+            val promoted = sspSlot || container?.optJSONObject("promotedMetadata") != null || container?.optJSONObject("tweetPromotedMetadata") != null ||
                 container?.optJSONObject("promoted_metadata") != null ||
                 item.optJSONObject("promotedMetadata") != null || content.optJSONObject("promotedMetadata") != null ||
                 item.optJSONObject("promoted_metadata") != null ||
@@ -126,6 +127,7 @@ class TimelineFilter(private val engine: RuleEngine, val stats: FilterStats = Fi
             val repostSignal = if (container != null && tweet != null) repostSignal(result, container, item, content) else null
             if (repostSignal != null) stats.reposts.incrementAndGet()
             val hit = when {
+                engine.settings.blockPromoted && sspSlot -> Match("视频广告", "SSP:TimelineRtbImageAd", "视频广告")
                 engine.settings.blockPromoted && promoted -> Match("推广广告", "promotedMetadata", "推广")
                 engine.settings.blockReposts && allowReposts && repostSignal != null -> Match("时间线转帖", repostSignal, "转帖")
                 else -> tweet?.let(engine::match)
@@ -135,6 +137,15 @@ class TimelineFilter(private val engine: RuleEngine, val stats: FilterStats = Fi
                 entries.remove(i)
                 events += BlockEvent(tweet?.id?.takeIf { it.isNotBlank() } ?: entryId, tweet?.handle.orEmpty(), hit.reason, hit.rule, hit.category)
             }
+        }
+    }
+
+    /** Exact outer timeline type only. Never inspect quoted posts, captions, cards or media. */
+    private fun isSspSlot(node: JSONObject, depth: Int = 0): Boolean {
+        if (node.optString("__typename") == "TimelineRtbImageAd") return true
+        if (depth >= 4) return false
+        return listOf("content", "itemContent", "item").any { key ->
+            node.optJSONObject(key)?.let { isSspSlot(it, depth + 1) } == true
         }
     }
 

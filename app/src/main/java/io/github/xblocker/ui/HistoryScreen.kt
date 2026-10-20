@@ -173,7 +173,11 @@ private fun HistoryRecordCard(
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(if (record.handle.isNotBlank()) "@${record.handle}" else resources.getString(
-                if (record.kind == HistoryFilter.Promoted) R.string.promoted_entry else R.string.history_unknown_author),
+                when (record.kind) {
+                    HistoryFilter.Promoted -> R.string.promoted_entry
+                    HistoryFilter.VideoAds -> R.string.video_ad_slot
+                    else -> R.string.history_unknown_author
+                }),
                 modifier = Modifier.weight(1f), fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(time, fontSize = 12.sp, color = colors.onSurfaceVariantSummary,
@@ -186,6 +190,7 @@ private fun HistoryRecordCard(
                     .padding(horizontal = 7.dp, vertical = 3.dp))
             Text(when (record.kind) {
                 HistoryFilter.Promoted -> resources.getString(R.string.history_promoted_hidden)
+                HistoryFilter.VideoAds -> resources.getString(R.string.history_video_ad_hidden)
                 HistoryFilter.Reposts -> resources.getString(R.string.history_repost_hidden)
                 else -> listOf(record.category, record.reason).filter { it.isNotBlank() }
                     .joinToString(" · ") { LocalizedText.resolve(context, it) }
@@ -207,7 +212,8 @@ private fun HistoryRecordCard(
                     }
                 }
                 if (record.id.isNotBlank()) SelectionContainer {
-                    Text(resources.getString(R.string.history_post_id, record.id), fontSize = 12.sp,
+                    Text(resources.getString(if (record.kind == HistoryFilter.VideoAds)
+                        R.string.history_ad_slot_id else R.string.history_post_id, record.id), fontSize = 12.sp,
                         color = colors.onSurfaceVariantSummary)
                 }
                 if (record.canAllowlist) {
@@ -215,8 +221,11 @@ private fun HistoryRecordCard(
                         enabled = !allowlisted, onClick = onAllowlist, modifier = Modifier.fillMaxWidth(),
                         textStyle = TextStyle(fontSize = 14.sp))
                 } else if (record.kind != HistoryFilter.Rules) {
-                    Text(resources.getString(if (record.kind == HistoryFilter.Promoted)
-                        R.string.history_promoted_policy else R.string.history_repost_policy),
+                    Text(resources.getString(when (record.kind) {
+                        HistoryFilter.Promoted -> R.string.history_promoted_policy
+                        HistoryFilter.VideoAds -> R.string.history_video_ad_policy
+                        else -> R.string.history_repost_policy
+                    }),
                         fontSize = 12.sp, color = colors.onSurfaceVariantSummary)
                 }
             }
@@ -246,5 +255,6 @@ private fun HistoryFilter.titleResource(): Int = when (this) {
     HistoryFilter.All -> R.string.history_filter_all
     HistoryFilter.Rules -> R.string.history_filter_rules
     HistoryFilter.Promoted -> R.string.category_promoted
+    HistoryFilter.VideoAds -> R.string.category_video_ads
     HistoryFilter.Reposts -> R.string.category_reposts
 }

@@ -9,7 +9,7 @@ import android.os.Bundle
 import android.os.Process
 import org.json.JSONObject
 
-/** Read-only configuration bridge. Only X's UID and our own UID may access it. */
+/** Configuration, diagnostics and user-initiated media downloads. Restricted to X's UID and our own UID. */
 class ModuleProvider : ContentProvider() {
     override fun onCreate(): Boolean = true
     override fun call(method: String, arg: String?, extras: Bundle?): Bundle {
@@ -19,12 +19,23 @@ class ModuleProvider : ContentProvider() {
         if (uid != Process.myUid() && "com.twitter.android" !in packages) throw SecurityException("Caller not in module scope")
         val repository = Repository(ctx)
         return when (method) {
+            "downloadMedia" -> {
+                val identity = Binder.clearCallingIdentity()
+                try {
+                    val request = requireNotNull(extras)
+                    val result = io.github.xblocker.download.MediaDownload.enqueue(ctx,
+                        request.getString("url").orEmpty(), request.getString("tweetId").orEmpty(),
+                        request.getString("mediaId").orEmpty(), request.getString("type").orEmpty())
+                    Bundle().apply { putBoolean("queued", result.queued); putString("requestId", result.requestId); putString("message", result.message) }
+                } finally { Binder.restoreCallingIdentity(identity) }
+            }
             "snapshot" -> Bundle().apply { putString("json", repository.snapshot()) }
             "report" -> {
                 val payload = extras?.getString("json").orEmpty()
                 require(payload.length <= 150_000)
                 val report = JSONObject(payload)
                 repository.report(report)
+                UpdateActivationStore(ctx).observeHost(report)
                 // X normally owns the live notification. Keep a module-owned fallback for
                 // older clients that do not mark the report as X-owned.
                 val identity = Binder.clearCallingIdentity()

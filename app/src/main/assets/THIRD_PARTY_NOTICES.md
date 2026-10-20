@@ -1,5 +1,7 @@
 # Third-party notices
 
+- DexKit 2.3.0: [LuckyPray/DexKit](https://github.com/LuckyPray/DexKit/tree/2.3.0). Used for local fallback discovery of X's network hook and post-update discovery reports. The API is Apache-2.0; the native `Core/` is LGPL-3.0. The unmodified dependency is obtained from Maven Central; matching source and build instructions are available at the linked tag. The LGPL license is bundled in `app/src/main/assets/licenses/DexKit-LGPL-3.0.txt` and the Apache-2.0 text is bundled alongside it.
+
 - Cloud dictionary: [amahteru/x-comment-blocker](https://github.com/amahteru/x-comment-blocker), MIT. The bundled `keywords.txt` is an offline snapshot downloaded on 2026-09-06. Its original license is included in `app/src/main/assets/UPSTREAM-LICENSE.txt`. Category and `/pattern/flags` conventions follow that project. Cloud refresh reads the same repository's `keywords.txt`.
 - Miuix UI / blur 0.9.3: [compose-miuix-ui/miuix](https://github.com/compose-miuix-ui/miuix), Apache-2.0. Used as Compose dependencies.
 - Xposed API 82: [rovo89/XposedBridge](https://github.com/rovo89/XposedBridge), compile-only API supplied at runtime by LSPosed. It is not packaged in the APK.

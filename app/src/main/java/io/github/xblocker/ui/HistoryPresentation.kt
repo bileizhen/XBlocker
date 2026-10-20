@@ -7,7 +7,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.util.Locale
 
-internal enum class HistoryFilter { All, Rules, Promoted, Reposts }
+internal enum class HistoryFilter { All, Rules, Promoted, VideoAds, Reposts }
 
 internal data class HistoryRecord(
     val key: String,
@@ -19,6 +19,7 @@ internal data class HistoryRecord(
     val time: Long,
 ) {
     val kind: HistoryFilter get() = when {
+        category == "视频广告" || reason == "视频广告" -> HistoryFilter.VideoAds
         category == "推广" || reason == "推广广告" -> HistoryFilter.Promoted
         category == "转帖" || reason == "时间线转帖" -> HistoryFilter.Reposts
         else -> HistoryFilter.Rules

@@ -16,6 +16,9 @@ import io.github.xblocker.data.InstallResult
 import io.github.xblocker.data.UpdateDownloadState
 import io.github.xblocker.data.UpdateSource
 import io.github.xblocker.data.XposedServiceClient
+import io.github.xblocker.data.UpdateActivation
+import io.github.xblocker.data.UpdateActivationState
+import io.github.xblocker.data.UpdateActivationStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,6 +46,7 @@ data class UiState(
     val autoUpdate: Boolean = true,
     val launcherIconHidden: Boolean = false,
     val updateChannel: Int = 0,
+    val activation: UpdateActivationState? = null,
     val message: String = "",
 )
 
@@ -52,6 +56,7 @@ data class ScopePrompt(val missing: List<String>, val serviceConnected: Boolean)
 class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val context get() = io.github.xblocker.i18n.AppLanguage.context(getApplication<Application>())
     private val repo = Repository(app)
+    private val activationStore = UpdateActivationStore(app)
     private val mutable = MutableStateFlow(UiState())
     val state = mutable.asStateFlow()
     private val update = MutableStateFlow<io.github.xblocker.core.AppRelease?>(null)
@@ -64,7 +69,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val scopePrompt = scopePromptState.asStateFlow()
     @Volatile private var scopeChecked = false
     init {
-        viewModelScope.launch { while (true) { refresh(); delay(5000) } }
+        viewModelScope.launch { while (true) {
+            refresh()
+            delay(if (mutable.value.activation?.running == true) 750L else 5000L)
+        } }
         if (repo.autoUpdate()) checkForUpdates(automatic = true)
         // The LSPosed binder may land after the first check; re-evaluate once it does.
         XposedServiceClient.onConnected { evaluateScopePrompt() }
@@ -217,6 +225,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 colorMode = repo.colorMode(),
                 appearance = repo.appearance(),
                 autoUpdate = repo.autoUpdate(),
+                activation = activationStore.read(),
                 updateChannel = repo.updateChannel(),
                 history = (history.length() - 1 downTo 0).map { history.getJSONObject(it) })
         }
@@ -238,6 +247,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
     fun message(text: String) { mutable.value = mutable.value.copy(message = text) }
+    fun dismissActivation() {
+        val current = activationStore.read() ?: return
+        activationStore.update(current.token) { it.copy(dismissed = true) }
+        mutable.value = mutable.value.copy(activation = activationStore.read())
+    }
+    fun retryActivation() {
+        UpdateActivation.retry(getApplication())
+        mutable.value = mutable.value.copy(activation = activationStore.read())
+    }
     fun setColorMode(mode: Int) { viewModelScope.launch {
         withContext(Dispatchers.IO) { repo.setColorMode(mode) }; refresh()
     } }
