@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+    <application>
+        <meta-data android:name="xposedsharedprefs" tools:node="remove" />
+        <meta-data android:name="xposedscope" android:resource="@array/fpa_scope" tools:replace="android:resource" />
+        <provider android:name=".data.XposedServiceProvider" tools:node="remove" />
+    </application>
+</manifest>

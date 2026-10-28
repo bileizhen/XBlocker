@@ -80,6 +80,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Prompts once per app version when the fluid cloud route is on but scopes are missing. */
     private fun evaluateScopePrompt() {
+        if (io.github.xblocker.BuildConfig.FPA_COMPAT) return
         if (scopeChecked) return
         val version = io.github.xblocker.BuildConfig.VERSION_CODE
         if (repo.scopePromptVersion() >= version) return
@@ -111,6 +112,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     /** OShin-style manual entry: request the complete scope list in one LSPosed confirmation. */
     fun requestAllScopes() {
+        if (io.github.xblocker.BuildConfig.FPA_COMPAT) return
         if (!XposedServiceClient.connected()) {
             message(context.getString(R.string.lsposed_service_is_unavailable_select_scopes_manually))
             return
@@ -139,6 +141,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun setLauncherIconHidden(hidden: Boolean) {
+        if (io.github.xblocker.BuildConfig.FPA_COMPAT && hidden) return
         runCatching { LauncherIcon.setHidden(context, hidden) }
             .onSuccess {
                 mutable.value = mutable.value.copy(launcherIconHidden = LauncherIcon.isHidden(context))
@@ -155,6 +158,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun checkForUpdates(automatic: Boolean = false) {
+        if (io.github.xblocker.BuildConfig.FPA_COMPAT) return
         if (checking.value) return
         checking.value = true
         viewModelScope.launch {

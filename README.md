@@ -84,6 +84,7 @@ XBlocker 是一个面向 Android 原生 X 客户端的 LSPosed 过滤模块。�
 | --- | --- |
 | Android | 9（API 28）及以上 |
 | 框架 | LSPosed API 101 |
+| FPA 内嵌 | 独立版本 `0.3.5-fpa.1`，用户已反馈可用；安装方法、验证范围及功能边界见 [FPA.md](FPA.md) |
 | 已验证 X | `12.16.3-release.0`、`12.23.1-prod.01`、`12.35.0-prod.01`（本次媒体下载实机验证） |
 
 ## 安装

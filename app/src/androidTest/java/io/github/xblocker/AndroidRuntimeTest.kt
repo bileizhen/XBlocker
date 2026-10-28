@@ -75,15 +75,21 @@ class AndroidRuntimeTest {
         assertEquals(settings, ConfigCodec.decode(ConfigCodec.encode(settings)))
     }
 
-    @Test fun autoUpdatePreferenceDefaultsOnAndCanBeDisabled() {
-        val repository = io.github.xblocker.data.Repository(InstrumentationRegistry.getInstrumentation().targetContext)
-        val original = repository.autoUpdate()
+    @Test fun autoUpdatePreferenceRespectsEditionAndCanBeDisabled() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val repository = io.github.xblocker.data.Repository(context)
+        val prefs = context.getSharedPreferences("xblocker", android.content.Context.MODE_PRIVATE)
+        val hadPreference = prefs.contains("autoUpdate")
+        val original = prefs.getBoolean("autoUpdate", true)
         try {
             repository.setAutoUpdate(true)
-            assertTrue(repository.autoUpdate())
+            assertEquals(!BuildConfig.FPA_COMPAT, repository.autoUpdate())
             repository.setAutoUpdate(false)
             assertFalse(repository.autoUpdate())
-        } finally { repository.setAutoUpdate(original) }
+        } finally {
+            if (hadPreference) repository.setAutoUpdate(original)
+            else prefs.edit().remove("autoUpdate").commit()
+        }
     }
     @Test fun x1216DetailsAndReplyReferencesUseAndroidJsonCorrectly() {
         val input = """{"entries":[

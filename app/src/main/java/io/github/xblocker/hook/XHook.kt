@@ -62,18 +62,26 @@ class XHook : IXposedHookLoadPackage {
             return
         }
         if (packageName != "com.twitter.android" || processName != packageName) return
+        fun start(app: Application, context: Context) {
+            if (BuildConfig.FPA_COMPAT && !fpaStarted.compareAndSet(false, true)) return
+            runCatching { Runtime(context, app, classLoader).start() }.onFailure {
+                XposedBridge.log("XBlocker: initialization failed: ${it.javaClass.simpleName}")
+                sendMarker(context, JSONObject().put("phase", "init-failed")
+                    .put("error", "${it.javaClass.simpleName}: ${it.message?.take(160)}"))
+            }
+        }
         XposedHelpers.findAndHookMethod(Application::class.java, "attach", Context::class.java, object : XC_MethodHook() {
             override fun afterHookedMethod(p: MethodHookParam) {
-                val context = p.args[0] as Context
-                val app = p.thisObject as Application
-                runCatching { Runtime(context, app, classLoader).start() }.onFailure {
-                    XposedBridge.log("XBlocker: initialization failed: ${it.javaClass.simpleName}")
-                    sendMarker(context, JSONObject().put("phase", "init-failed")
-                        .put("error", "${it.javaClass.simpleName}: ${it.message?.take(160)}"))
-                }
+                start(p.thisObject as Application, p.args[0] as Context)
             }
         })
+        // Some embedded loaders deliver loadPackage after the host has already attached.
+        if (BuildConfig.FPA_COMPAT) runCatching {
+            XposedHelpers.callStaticMethod(XposedHelpers.findClass("android.app.ActivityThread", null), "currentApplication") as? Application
+        }.getOrNull()?.takeIf { it.packageName == packageName && it.baseContext != null }?.let { start(it, it.baseContext) }
     }
+
+    companion object { private val fpaStarted = java.util.concurrent.atomic.AtomicBoolean(false) }
 
     /**
      * Reports that this system-side scope is actually active, so the module app can tell a
@@ -117,10 +125,17 @@ class XHook : IXposedHookLoadPackage {
         private val resumed = java.util.concurrent.atomic.AtomicInteger()
         private val fgReportTicket = AtomicLong()
         private val bridgeExecutor = Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "XBlocker-bridge").apply { isDaemon = true } }
+        private val hostConfig = if (BuildConfig.FPA_COMPAT) HostConfigCache(context) else null
 
         fun start() {
             // Load the existing switch before SSP policy decisions during host startup.
-            runCatching { applySnapshot(prefsSnapshot()) }
+            if (BuildConfig.FPA_COMPAT) {
+                val snapshot = runCatching { context.contentResolver.call(bridge, "snapshot", null, null)?.getString("json") }.getOrNull()
+                runCatching { applySnapshot(snapshot ?: hostConfig?.read() ?: JSONObject()
+                    .put("settings", ConfigCodec.encode(io.github.xblocker.core.FilterSettings()))
+                    .put("cloud", EmbeddedModule.keywords(context)).toString()) }
+                    .onFailure { XposedBridge.log("XBlocker.FPA: configuration unavailable: ${it.message}") }
+            } else runCatching { applySnapshot(prefsSnapshot()) }
             // Install before Application.attach returns so first-page requests and cached states
             // cannot race an asynchronous scan. Discovery is fingerprint-cached after this update.
             runCatching { SspAdHook(context, loader, { SspSlotPolicy.enabled(enabled, blockPromoted) }) { id ->
@@ -290,11 +305,14 @@ class XHook : IXposedHookLoadPackage {
 
         private fun refreshAndReport() {
             try {
-                val snapshot = context.contentResolver.call(bridge, "snapshot", null, null)?.getString("json") ?: return
+                val snapshot = checkNotNull(context.contentResolver.call(bridge, "snapshot", null, null)?.getString("json")) {
+                    "Module configuration unavailable"
+                }
                 applySnapshot(snapshot)
                 val batch = queue.toList().take(100)
                 val report = JSONObject().put("hooks", hooks).put("adapter", adapter).put("pid", Process.myPid())
                     .put("moduleVersion", BuildConfig.VERSION_NAME).put("moduleCode", BuildConfig.VERSION_CODE)
+                    .put("loadingMode", if (BuildConfig.FPA_COMPAT) "fpa-embedded" else "lsposed")
                     .put("scanReport", scanReport?.toJson())
                     .put("mediaDownload", mediaDownload?.status ?: "unavailable")
                     .put("mediaScan", mediaDownload?.scanReport)
@@ -317,7 +335,7 @@ class XHook : IXposedHookLoadPackage {
                 // Filtering must not depend on provider visibility: some OEM builds keep the
                 // provider hidden right after an APK update cleared the URI grant. Fall back
                 // to reading the module prefs LSPosed exposes to scoped processes.
-                val snapshot = prefsSnapshot()
+                val snapshot = if (BuildConfig.FPA_COMPAT) hostConfig?.read() else prefsSnapshot()
                 if (applySnapshot(snapshot) && !prefsFallbackLogged) {
                     prefsFallbackLogged = true
                     XposedBridge.log("XBlocker: prefs fallback active (rules=${filter?.ruleCount ?: 0})")
@@ -348,7 +366,9 @@ class XHook : IXposedHookLoadPackage {
             enabled = settings.enabled
             blockPromoted = settings.blockPromoted
             nativeStatus = json.optBoolean("fluidCloud", false)
-            focusStatus = json.optBoolean("focusNotification", false)
+            focusStatus = !BuildConfig.FPA_COMPAT && json.optBoolean("focusNotification", false)
+            hostConfig?.let { cache -> runCatching { cache.save(snapshot) }
+                .onFailure { XposedBridge.log("XBlocker.FPA: config cache write failed: ${it.javaClass.simpleName}") } }
             lastSnapshot = snapshot
             return true
         }

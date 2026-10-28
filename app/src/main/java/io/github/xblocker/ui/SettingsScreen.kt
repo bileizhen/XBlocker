@@ -33,6 +33,15 @@ internal fun LazyListScope.settingsItems(
     onToggleFluidCloud: (Boolean) -> Unit,
     onToggleFocusNotification: (Boolean) -> Unit,
 ) {
+    if (io.github.xblocker.BuildConfig.FPA_COMPAT) item {
+        Card {
+            top.yukonga.miuix.kmp.basic.BasicComponent(
+                title = resources.getString(R.string.fpa_edition, io.github.xblocker.BuildConfig.VERSION_NAME),
+                summary = resources.getString(R.string.fpa_setup),
+            )
+        }
+    }
+    if (!io.github.xblocker.BuildConfig.FPA_COMPAT) {
     item {
         Card {
             SwitchPreference(
@@ -53,6 +62,7 @@ internal fun LazyListScope.settingsItems(
                 onSelectedIndexChange = vm::setUpdateChannel,
             )
         }
+    }
     }
     item {
         Card {
@@ -76,7 +86,7 @@ internal fun LazyListScope.settingsItems(
                 title = resources.getString(R.string.appearance), summary = resources.getString(R.string.theme_colors_and_interface_effects),
                 startAction = { SettingsIcon(Icons.Rounded.Palette) }, onClick = onOpenTheme,
             )
-            SwitchPreference(
+            if (!io.github.xblocker.BuildConfig.FPA_COMPAT) SwitchPreference(
                 title = resources.getString(R.string.hide_launcher_icon),
                 summary = resources.getString(R.string.hide_launcher_icon_summary),
                 startAction = { SettingsIcon(Icons.Rounded.Cottage) },
@@ -136,13 +146,13 @@ internal fun LazyListScope.settingsItems(
                 startAction = { SettingsIcon(Icons.Rounded.NotificationsActive) },
                 checked = state.fluidCloud, onCheckedChange = onToggleFluidCloud,
             )
-            SwitchPreference(
+            if (!io.github.xblocker.BuildConfig.FPA_COMPAT) SwitchPreference(
                 title = resources.getString(R.string.focus_notification_conversion),
                 summary = resources.getString(R.string.publish_separate_xiaomi_focus_notifications_requires_hyperisland),
                 startAction = { SettingsIcon(Icons.Rounded.Notifications) },
                 checked = state.focusNotification, onCheckedChange = onToggleFocusNotification,
             )
-            ArrowPreference(
+            if (!io.github.xblocker.BuildConfig.FPA_COMPAT) ArrowPreference(
                 title = resources.getString(R.string.request_all_scopes),
                 summary = resources.getString(R.string.request_x_and_system_scopes_through_lsposed),
                 startAction = { SettingsIcon(Icons.Rounded.Security) },
@@ -164,7 +174,7 @@ internal fun LazyListScope.settingsItems(
                 title = resources.getString(R.string.about),
                 startAction = { SettingsIcon(Icons.Rounded.ContactPage) }, onClick = onOpenAbout,
             )
-            ArrowPreference(
+            if (!io.github.xblocker.BuildConfig.FPA_COMPAT) ArrowPreference(
                 title = resources.getString(R.string.check_for_updates), summary = resources.getString(R.string.current_v, io.github.xblocker.BuildConfig.VERSION_NAME, if (state.autoUpdate) resources.getString(R.string.check_on_launch) else resources.getString(R.string.manual_checks_only)),
                 startAction = { SettingsIcon(Icons.Rounded.NotificationsActive) },
                 onClick = { vm.checkForUpdates() },

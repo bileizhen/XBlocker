@@ -50,7 +50,7 @@ class Repository(context: Context) {
     fun diagnostics(): JSONObject = JSONObject(prefs.getString("diagnostics", "{}")!!)
     fun report(json: JSONObject) { synchronized(lock) {
         val previous = diagnostics()
-        for (key in json.keys()) if (key in setOf("version", "hooks", "adapter", "pid", "fg", "seen", "filtered", "error", "responses", "rules", "rejected", "probe", "mediaDownload", "mediaScan",
+        for (key in json.keys()) if (key in setOf("version", "moduleVersion", "moduleCode", "loadingMode", "hooks", "adapter", "pid", "fg", "seen", "filtered", "error", "responses", "rules", "rejected", "probe", "mediaDownload", "mediaScan",
                 "sspAds", "sspScan", "sspPolicyCalls", "sspSlots", "sspBlocked",
                 "envelopes", "jsonParsed", "entriesArrays", "entriesInspected", "tweets", "texts", "replies", "promoted", "reposts", "blocked")) previous.put(key, json.opt(key))
         previous.put("lastSeen", System.currentTimeMillis())
@@ -100,7 +100,7 @@ class Repository(context: Context) {
         check(prefs.edit().putBoolean("fluidCloud", enabled).commit()); makeSharedPrefsReadable()
         createChannelsIfEnabled()
     }
-    fun focusNotification(): Boolean = prefs.getBoolean("focusNotification", false)
+    fun focusNotification(): Boolean = !BuildConfig.FPA_COMPAT && prefs.getBoolean("focusNotification", false)
     fun setFocusNotification(enabled: Boolean) {
         check(prefs.edit().putBoolean("focusNotification", enabled).commit()); makeSharedPrefsReadable()
         createChannelsIfEnabled()
@@ -117,7 +117,7 @@ class Repository(context: Context) {
             if (focusNotification()) io.github.xblocker.fluid.FocusStatus.ensureChannels(appContext)
         }
     }
-    fun autoUpdate(): Boolean = prefs.getBoolean("autoUpdate", true)
+    fun autoUpdate(): Boolean = !BuildConfig.FPA_COMPAT && prefs.getBoolean("autoUpdate", true)
     fun setAutoUpdate(enabled: Boolean) { check(prefs.edit().putBoolean("autoUpdate", enabled).commit()); makeSharedPrefsReadable() }
     /** Update channel: 0 = stable only, 1 = include pre-releases. */
     fun updateChannel(): Int = prefs.getInt("updateChannel", 0).coerceIn(0, 1)
@@ -153,6 +153,7 @@ class Repository(context: Context) {
     /** LSPosed's shared-preferences bridge may leave the redirected file at mode 0660. */
     @Volatile private var sharedPrefsFile: File? = null
     private fun makeSharedPrefsReadable() {
+        if (BuildConfig.FPA_COMPAT) return
         sharedPrefsFile?.let { file -> runCatching { file.setReadable(true, false) }; return }
         runCatching {
             val fields = buildList {

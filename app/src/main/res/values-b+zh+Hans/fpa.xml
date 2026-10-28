@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="fpa_embedded_version">X 回报的内嵌版本：%1$s。若与管理端不一致，请重新内嵌本 APK。</string>
+    <string name="fpa_edition">FPA 内嵌版 · %1$s</string>
+    <string name="fpa_setup">安装并打开本 APK 管理规则，再用 FPA 将同一个 APK 内嵌到 X，重新启动 X。连接正常时设置约 5 秒内生效。更新管理端后仍需重新内嵌，才能更新 X 中的模块。此版本不提供系统界面 Hook，实时通知取决于系统权限。</string>
+</resources>

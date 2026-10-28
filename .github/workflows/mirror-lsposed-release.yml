@@ -27,6 +27,8 @@ concurrency:
 
 jobs:
   mirror:
+    # Embedded editions have their own entry/scope and do not belong in the LSPosed mirror.
+    if: ${{ !contains(github.event.release.tag_name || inputs.tag, '-fpa.') }}
     runs-on: ubuntu-latest
     steps:
       - name: Read build.gradle.kts from the release commit

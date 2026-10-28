@@ -81,7 +81,7 @@ internal object MediaMenuLocator {
     @Synchronized fun resolve(context: Context, loader: ClassLoader? = null, force: Boolean = false): MediaMenuResolution {
         val host = context.packageManager.getPackageInfo("com.twitter.android", 0)
         val info = requireNotNull(host.applicationInfo)
-        return discover(context, (listOf(info.sourceDir) + info.splitSourceDirs.orEmpty()).distinct().sorted(),
+        return discover(context, HostApkPaths.resolve(info, loader),
             "${host.longVersionCode}:${host.lastUpdateTime}", loader, force)
     }
 
@@ -115,7 +115,7 @@ internal object MediaMenuLocator {
             if (cache) {
                 val latest = context.packageManager.getPackageInfo("com.twitter.android", 0)
                 val latestInfo = requireNotNull(latest.applicationInfo)
-                val latestPaths = (listOf(latestInfo.sourceDir) + latestInfo.splitSourceDirs.orEmpty()).distinct().sorted()
+                val latestPaths = HostApkPaths.resolve(latestInfo, loader)
                 check(fingerprint == fingerprint(latestPaths, "${latest.longVersionCode}:${latest.lastUpdateTime}")) { "Host replaced during media scan" }
             }
             loader?.let(targets::validate)

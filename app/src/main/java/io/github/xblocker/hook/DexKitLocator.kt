@@ -46,7 +46,7 @@ object DexKitLocator {
         var previous = ""
         return try {
             host = hostInfo(context)
-            val paths = apkPaths(host)
+            val paths = HostApkPaths.resolve(checkNotNull(host.applicationInfo), loader)
             fingerprint = fingerprint(host, paths)
             val prefs = context.getSharedPreferences(CACHE, Context.MODE_PRIVATE)
             val saved = runCatching { JSONObject(prefs.getString("target", "{}") ?: "{}") }.getOrDefault(JSONObject())
@@ -82,7 +82,7 @@ object DexKitLocator {
             }
             // Installing a new host while the scan runs must not publish/cache a mixed snapshot.
             val latestHost = hostInfo(context)
-            check(fingerprint == fingerprint(latestHost, apkPaths(latestHost))) { "Host changed during scan" }
+            check(fingerprint == fingerprint(latestHost, HostApkPaths.resolve(checkNotNull(latestHost.applicationInfo), loader))) { "Host changed during scan" }
             val target = DexKitCandidatePolicy.unique(candidates)
             if (target == null) {
                 prefs.edit().remove("target").apply()
@@ -106,11 +106,6 @@ object DexKitLocator {
 
     @Suppress("DEPRECATION")
     private fun hostInfo(context: Context) = context.packageManager.getPackageInfo(HOST, 0)
-
-    private fun apkPaths(host: PackageInfo): List<String> {
-        val info = checkNotNull(host.applicationInfo)
-        return (listOf(info.sourceDir) + info.splitSourceDirs.orEmpty()).distinct().sorted()
-    }
 
     private fun fingerprint(host: PackageInfo, paths: List<String>): String {
         val material = buildString {
@@ -136,6 +131,23 @@ object DexKitLocator {
 
     @Synchronized internal fun loadNative(context: Context) {
         if (nativeLoaded) return
+        if (BuildConfig.FPA_COMPAT && runCatching { System.loadLibrary("dexkit") }.isSuccess) {
+            nativeLoaded = true
+            return
+        }
+        if (BuildConfig.FPA_COMPAT) {
+            val abis = if (Process.is64Bit()) Build.SUPPORTED_64_BIT_ABIS else Build.SUPPORTED_32_BIT_ABIS
+            for (path in EmbeddedModule.paths(context)) {
+                val loaded = runCatching {
+                    val library = ZipFile(path).use { zip -> abis.firstNotNullOfOrNull { abi ->
+                        "lib/$abi/libdexkit.so".takeIf { zip.getEntry(it) != null }
+                    } } ?: return@runCatching false
+                    System.load("$path!/$library")
+                    true
+                }.getOrDefault(false)
+                if (loaded) { nativeLoaded = true; return }
+            }
+        }
         val module = context.packageManager.getApplicationInfo(BuildConfig.APPLICATION_ID, 0)
         val extracted = File(module.nativeLibraryDir, "libdexkit.so")
         if (extracted.isFile) {

@@ -85,6 +85,12 @@ import top.yukonga.miuix.kmp.theme.lightColorScheme
 import java.util.Date
 
 class MainActivity : ComponentActivity() {
+    override fun onResume() {
+        super.onResume()
+        // Repatching/reinstalling X can replace its UID while this app stays alive.
+        io.github.xblocker.data.BridgeVisibility.grant(this)
+    }
+
     override fun attachBaseContext(newBase: android.content.Context) {
         super.attachBaseContext(io.github.xblocker.i18n.AppLanguage.context(newBase))
     }
@@ -339,10 +345,16 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
                 when (page) {
                     0 -> {
                         item { OverviewStatus(state, onHistory = { selectedPage = 2 }, onRules = { selectedPage = 1 }) }
+                        if (io.github.xblocker.BuildConfig.FPA_COMPAT) item { Notice(resources.getString(R.string.fpa_setup)) }
                         item {
                             Card {
                                 SuperSwitch(title = resources.getString(R.string.enable_filtering), summary = resources.getString(R.string.hide_matching_unwanted_content_in_x), checked = state.settings.enabled, onCheckedChange = { value -> vm.update { it.copy(enabled = value) } })
                                 BasicComponent(title = resources.getString(R.string.data_adapter), summary = state.diagnostics.optString("adapter").ifEmpty { resources.getString(R.string.waiting_for_x_to_start) })
+                                if (io.github.xblocker.BuildConfig.FPA_COMPAT) BasicComponent(
+                                    title = resources.getString(R.string.fpa_edition, io.github.xblocker.BuildConfig.VERSION_NAME),
+                                    summary = resources.getString(R.string.fpa_embedded_version, state.diagnostics.optString("moduleVersion")
+                                        .ifEmpty { resources.getString(R.string.waiting_for_x_to_start) }),
+                                )
                                 BasicComponent(title = resources.getString(R.string.current_x_process), summary = resources.getString(R.string.parsed_removed, state.diagnostics.optLong("responses"), state.diagnostics.optLong("blocked")))
                                 BasicComponent(title = resources.getString(R.string.system), summary = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) · ${Build.MODEL}")
                             }
@@ -444,7 +456,8 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
                                 })
                             }
                         }
-                        if (state.diagnostics.optLong("lastSeen") == 0L) item { Notice(resources.getString(R.string.if_no_report_is_received_enable_the)) }
+                        if (state.diagnostics.optLong("lastSeen") == 0L) item { Notice(resources.getString(
+                            if (io.github.xblocker.BuildConfig.FPA_COMPAT) R.string.fpa_setup else R.string.if_no_report_is_received_enable_the)) }
                         item { Notice(resources.getString(R.string.hma_oss_app_hiding_allow_x_to)) }
                         item { Notice(resources.getString(R.string.if_the_module_is_loaded_but_shows)) }
                         item { Notice(resources.getString(R.string.if_filtering_works_only_while_xblocker_remains)) }

@@ -7,6 +7,7 @@ import io.github.xblocker.data.CloudSync
 class XBlockerApp : Application() {
     override fun onCreate() {
         super.onCreate()
+        if (BuildConfig.FPA_COMPAT) runCatching { io.github.xblocker.data.LauncherIcon.setHidden(this, false) }
         // Remove the obsolete monitor notification/channel left by older builds.
         runCatching {
             getSystemService(android.app.NotificationManager::class.java)

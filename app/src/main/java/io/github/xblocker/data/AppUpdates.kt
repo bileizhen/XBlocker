@@ -39,6 +39,7 @@ object AppUpdates {
     private const val MAX_APK_BYTES = 128L * 1024L * 1024L
 
     fun check(channel: UpdateChannel = UpdateChannel.STABLE): AppRelease? {
+        if (BuildConfig.FPA_COMPAT) return null
         // "latest" never returns pre-releases; the pre-release channel lists recent releases
         // and lets the parser pick the newest installable one, stable or pre-release.
         val endpoint = if (channel == UpdateChannel.PRERELEASE)
@@ -70,6 +71,7 @@ object AppUpdates {
     }
 
     fun download(context: Context, release: AppRelease, source: UpdateSource, onProgress: (received: Long, total: Long) -> Unit): File {
+        check(!BuildConfig.FPA_COMPAT) { "FPA embedded modules must be updated by patching X again" }
         val directory = File(context.cacheDir, "updates").apply { mkdirs() }
         val stem = "XBlocker-${release.version}-${source.name.lowercase()}"
         val target = File(directory, "$stem.apk")

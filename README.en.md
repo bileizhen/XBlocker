@@ -84,6 +84,7 @@ The code is hosted on [GitHub](https://github.com/bileizhen/XBlocker) and also p
 | --- | --- |
 | Android | 9 (API 28) and later |
 | Framework | LSPosed API 101 |
+| FPA embedded loading | Separate `0.3.5-fpa.1` edition, reported usable by the user. See [FPA.md](FPA.md) for setup, validation scope and limitations. |
 | Verified X versions | `12.16.3-release.0`, `12.23.1-prod.01`, `12.35.0-prod.01` (on-device media download verification for this update) |
 
 ## Installation

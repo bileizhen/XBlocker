@@ -3,6 +3,9 @@ plugins {
     kotlin("android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
+// Distinct variant tasks and outputs keep the normal LSPosed package intact.
+val fpaCompat = providers.gradleProperty("fpaCompat").orNull == "true"
+if (fpaCompat) layout.buildDirectory.set(rootProject.layout.buildDirectory.dir("fpa-app"))
 android {
     // Keep the source namespace stable; applicationId is the installed/module package.
     namespace = "io.github.xblocker"
@@ -13,6 +16,10 @@ android {
         targetSdk = 36
         versionCode = 24
         versionName = "0.3.5"
+        buildConfigField("boolean", "FPA_COMPAT", fpaCompat.toString())
+        manifestPlaceholders["xposedMinVersion"] = if (fpaCompat) "82" else "93"
+        manifestPlaceholders["moduleLabel"] = if (fpaCompat) "XBlocker FPA" else "@string/app_name"
+        if (fpaCompat) versionNameSuffix = "-fpa.1"
         // The LSPosed repository requires a no-domain package to use the GitHub username.
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Supplied by Xiaomi after the app's Super Island service is enabled.
@@ -21,6 +28,11 @@ android {
     }
     buildTypes {
         getByName("debug") { manifestPlaceholders["xiaomiDebug"] = "true" }
+    }
+    if (fpaCompat) {
+        flavorDimensions += "loader"
+        productFlavors { create("fpa") { dimension = "loader" } }
+        sourceSets.getByName("main").resources.exclude("META-INF/xposed/**")
     }
     buildFeatures { compose = true; buildConfig = true }
     compileOptions {

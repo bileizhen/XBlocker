@@ -25,6 +25,13 @@ class XposedScopeTest {
     @Test fun apkDeclaresDynamicModernScopeAndRetainsLegacyEntry() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         ZipFile(context.applicationInfo.sourceDir).use { apk ->
+            if (BuildConfig.FPA_COMPAT) {
+                assertNull(apk.getEntry("META-INF/xposed/module.prop"))
+                assertNull(apk.getEntry("META-INF/xposed/java_init.list"))
+                assertEquals("io.github.xblocker.hook.FpaXHook", apk.getInputStream(apk.getEntry("assets/xposed_init"))
+                    .bufferedReader().use { it.readText().trim() })
+                return
+            }
             val props = Properties().apply {
                 apk.getInputStream(apk.getEntry("META-INF/xposed/module.prop")).use(::load)
             }

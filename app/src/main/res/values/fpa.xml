@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="fpa_embedded_version">Module reported by X: %1$s. If it differs from this app, embed this APK again.</string>
+    <string name="fpa_edition">FPA embedded edition · %1$s</string>
+    <string name="fpa_setup">Install and open this APK to manage rules, then embed the same APK into X using FPA and restart X. Changes sync within about 5 seconds while connected. Updating the settings app alone does not update the embedded module: patch X again. System UI hooks are unavailable in this edition. Live notifications depend on system permissions.</string>
+</resources>

@@ -65,7 +65,7 @@ internal object SspAdLocator {
         val started = SystemClock.elapsedRealtime()
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         return try {
-            val identity = identity(context)
+            val identity = identity(context, loader)
             val fingerprint = identity.first
             if (!force) runCatching {
                 val saved = JSONObject(prefs.getString("targets", "{}")!!)
@@ -83,7 +83,7 @@ internal object SspAdLocator {
                 } } }.forEach { bridges += DexKitBridge.create(it) }
                 discover(bridges)
             } finally { bridges.asReversed().forEach { it.close() } }
-            check(identity(context).first == fingerprint) { "Host replaced during SSP scan" }
+            check(identity(context, loader).first == fingerprint) { "Host replaced during SSP scan" }
             loader?.let(targets::validate)
             prefs.edit().putString("targets", JSONObject().put("fingerprint", fingerprint).put("targets", targets.toJson()).toString()).apply()
             SspAdResolution(targets, report(targets, "dexkit", started))
@@ -134,10 +134,10 @@ internal object SspAdLocator {
             stateCtors.map { it.descriptor }.distinct(), immutable, slotId)
     }
 
-    private fun identity(context: Context): Pair<String, List<String>> {
+    private fun identity(context: Context, loader: ClassLoader?): Pair<String, List<String>> {
         val host = context.packageManager.getPackageInfo("com.twitter.android", 0)
         val info = checkNotNull(host.applicationInfo)
-        val paths = (listOf(info.sourceDir) + info.splitSourceDirs.orEmpty()).distinct().sorted()
+        val paths = HostApkPaths.resolve(info, loader)
         val text = buildString {
             append("$SCHEMA:${BuildConfig.VERSION_CODE}:${BuildConfig.VERSION_NAME}:${host.longVersionCode}:${host.lastUpdateTime}")
             paths.forEach { path -> val f = File(path); check(f.isFile && f.canRead()); append('\n').append(f.canonicalPath).append(':').append(f.length()).append(':').append(f.lastModified()) }
