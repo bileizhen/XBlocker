@@ -49,6 +49,16 @@ class MediaDownloadPolicyTest {
         assertThrows(IllegalArgumentException::class.java) { MediaDownloadPolicy.verifyHeader(byteArrayOf(-1, -40), 2, "image/jpeg") }
     }
 
+    @Test fun perUserFolderStaysInsideDownloadRoot() {
+        assertEquals("123456(@abc_1)", MediaDownloadPolicy.folder(" 123456(@abc_1) "))
+        assertEquals("", MediaDownloadPolicy.folder(null))
+        assertEquals("Download/X/", MediaDownloadPolicy.relativePath(""))
+        assertEquals("Download/X/123456(@abc_1)/", MediaDownloadPolicy.relativePath("123456(@abc_1)"))
+        listOf("../other", "a/b", "a\\b", "a:b", "a".repeat(65), "x\u0000y").forEach {
+            assertThrows(IllegalArgumentException::class.java) { MediaDownloadPolicy.folder(it) }
+        }
+    }
+
     @Test fun uniqueWorkKeyIncludesMediaAndTweet() {
         val url = "https://pbs.twimg.com/media/a.jpg"
         assertEquals(MediaDownloadPolicy.key(url, "1", "2"), MediaDownloadPolicy.key(url, "1", "2"))

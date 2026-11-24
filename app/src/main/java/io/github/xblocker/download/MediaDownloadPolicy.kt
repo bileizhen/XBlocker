@@ -39,6 +39,21 @@ internal object MediaDownloadPolicy {
         return value
     }
 
+    /**
+     * Optional per-user subfolder under Download/X, e.g. "123456(@handle)". Kept to a strict
+     * character set so neither the host nor WorkManager input can escape the download root.
+     */
+    fun folder(raw: String?): String {
+        val value = raw.orEmpty().trim()
+        if (value.isEmpty()) return ""
+        require(value.length <= 64 && value.none { it.isISOControl() || it in "/\\:" } &&
+            !value.contains("..") && value.all { it.isLetterOrDigit() || it in "_@()-" }) { "Invalid media folder" }
+        return value
+    }
+
+    /** MediaStore RELATIVE_PATH always ends with a slash. */
+    fun relativePath(folder: String): String = if (folder.isEmpty()) "Download/X/" else "Download/X/$folder/"
+
     fun key(url: String, tweetId: String, mediaId: String): String = MessageDigest.getInstance("SHA-256")
         .digest("$tweetId\n$mediaId\n$url".toByteArray(Charsets.UTF_8))
         .joinToString("") { "%02x".format(it) }

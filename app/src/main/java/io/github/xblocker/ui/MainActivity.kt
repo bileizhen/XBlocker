@@ -15,6 +15,7 @@ import androidx.compose.material.icons.rounded.Cottage
 import androidx.compose.material.icons.automirrored.rounded.Rule
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Wallpaper
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.semantics.semantics
@@ -170,6 +171,8 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
     val resources = androidx.compose.ui.platform.LocalResources.current
     val scope = rememberCoroutineScope()
     var selectedPage by rememberSaveable { mutableIntStateOf(0) }
+    var mediaFolder by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(selectedPage) { if (selectedPage != 2) mediaFolder = null }
     // SukiSU MainActivity/NavDisplay pattern: main tabs share one root entry;
     // theme settings are pushed above it. Persist both across recreation.
     var backStack by rememberSaveable { mutableStateOf(listOf(0)) }
@@ -190,8 +193,9 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
     var showLogDialog by rememberSaveable { mutableStateOf(false) }
     var selectedUpdateSource by rememberSaveable { mutableStateOf(UpdateSource.GITHUB.name) }
     var pendingNotificationTarget by rememberSaveable { mutableStateOf("") }
-    val pages = listOf(resources.getString(R.string.overview), resources.getString(R.string.rules), resources.getString(R.string.history), resources.getString(R.string.settings), resources.getString(R.string.appearance), resources.getString(R.string.about), resources.getString(R.string.diagnostics))
-    val icons = listOf(Icons.Rounded.Cottage, Icons.AutoMirrored.Rounded.Rule, Icons.Rounded.History, Icons.Rounded.Settings)
+    // Visible tabs: Overview, Rules, Media, History, Settings. Pages 5+ are pushed above the root.
+    val pages = listOf(resources.getString(R.string.overview), resources.getString(R.string.rules), resources.getString(R.string.media), resources.getString(R.string.history), resources.getString(R.string.settings), resources.getString(R.string.appearance), resources.getString(R.string.about), resources.getString(R.string.diagnostics))
+    val icons = listOf(Icons.Rounded.Cottage, Icons.AutoMirrored.Rounded.Rule, Icons.Rounded.Wallpaper, Icons.Rounded.History, Icons.Rounded.Settings)
     fun openUrl(url: String) { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }.onFailure { vm.message(resources.getString(R.string.no_app_available_to_open_this_link)) } }
     fun edit(kind: String) { editor = kind; editorText = if (kind == "whitelist") state.settings.whitelist.joinToString("\n") else state.settings.customRules }
     val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -266,7 +270,7 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
     val usePredictiveBack = options.predictiveBack && Build.VERSION.SDK_INT >= 34
     val listStates = List(pages.size) { rememberLazyListState() }
     LaunchedEffect(historyQuery, historyFilter) {
-        if (selectedPage == 2) listStates[2].scrollToItem(0)
+        if (selectedPage == 3) listStates[3].scrollToItem(0)
     }
     val scrollBehaviors = List(pages.size) { MiuixScrollBehavior() }
     val pageContent: @Composable (Int, Modifier) -> Unit = { page, pageModifier ->
@@ -284,7 +288,7 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
                     color = if (backdrop != null) Color.Transparent else surfaceColor,
                     scrollBehavior = scrollBehavior,
                     navigationIcon = {
-                        if (page >= 4) IconButton(onClick = { navigateBack() }) {
+                        if (page >= 5) IconButton(onClick = { navigateBack() }) {
                             Icon(Icons.AutoMirrored.Rounded.ArrowBack, resources.getString(R.string.back_settings), tint = MiuixTheme.colorScheme.onSurface)
                         }
                     },
@@ -292,7 +296,7 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
             }
         },
         bottomBar = {
-            if (page < 4) {
+            if (page < 5) {
                 if (options.floatingBar) {
                     Box(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 26.dp, vertical = 12.dp), contentAlignment = Alignment.Center) {
                         if (Build.VERSION.SDK_INT < 33) {
@@ -301,7 +305,7 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
                             FloatingBottomBar(
                                 modifier = Modifier.widthIn(max = 480.dp).fillMaxWidth(),
                                 selectedIndex = { page }, onSelected = { selectedPage = it },
-                                backdrop = glassBackdrop, tabsCount = 4, isBlurEnabled = glassEnabled, isGlassEnabled = options.liquidGlass,
+                                backdrop = glassBackdrop, tabsCount = 5, isBlurEnabled = glassEnabled, isGlassEnabled = options.liquidGlass,
                             ) {
                                 icons.forEachIndexed { index, icon ->
                                     FloatingBottomBarItem(
@@ -333,18 +337,29 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
         else Box(Modifier.fillMaxSize()
             .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
             .then(if (options.floatingBar && glassEnabled) Modifier.layerBackdrop(glassBackdrop) else Modifier)) {
-            LazyColumn(
+            if (page == 2) {
+                MediaScreen(
+                    folder = mediaFolder,
+                    onFolderChange = { mediaFolder = it },
+                    modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
+                    contentPadding = PaddingValues(
+                        top = padding.calculateTopPadding() + 12.dp,
+                        bottom = padding.calculateBottomPadding() + 24.dp,
+                        start = 12.dp, end = 12.dp,
+                    ),
+                )
+            } else LazyColumn(
                 state = listStates[page],
                 modifier = Modifier.fillMaxSize().background(MiuixTheme.colorScheme.surface)
-                    .then(if (page == 2) Modifier.imePadding() else Modifier)
+                    .then(if (page == 3) Modifier.imePadding() else Modifier)
                     .nestedScroll(scrollBehavior.nestedScrollConnection)
                     .padding(horizontal = 12.dp),
-                contentPadding = PaddingValues(top = padding.calculateTopPadding() + if (page == 4) 0.dp else 12.dp, bottom = padding.calculateBottomPadding() + 24.dp),
+                contentPadding = PaddingValues(top = padding.calculateTopPadding() + if (page == 5) 0.dp else 12.dp, bottom = padding.calculateBottomPadding() + 24.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 when (page) {
                     0 -> {
-                        item { OverviewStatus(state, onHistory = { selectedPage = 2 }, onRules = { selectedPage = 1 }) }
+                        item { OverviewStatus(state, onHistory = { selectedPage = 3 }, onRules = { selectedPage = 1 }) }
                         if (io.github.xblocker.BuildConfig.FPA_COMPAT) item { Notice(resources.getString(R.string.fpa_setup)) }
                         item {
                             Card {
@@ -361,7 +376,7 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
                         }
                         item {
                             Card {
-                                BasicComponent(title = resources.getString(R.string.block_history), summary = resources.getString(R.string.latest_records_retained, state.history.size, io.github.xblocker.data.HistoryStore.MAX_RECORDS), onClick = { selectedPage = 2 }, endActions = { Text("›", fontSize = 24.sp, color = MiuixTheme.colorScheme.onSurfaceVariantSummary) })
+                                BasicComponent(title = resources.getString(R.string.block_history), summary = resources.getString(R.string.latest_records_retained, state.history.size, io.github.xblocker.data.HistoryStore.MAX_RECORDS), onClick = { selectedPage = 3 }, endActions = { Text("›", fontSize = 24.sp, color = MiuixTheme.colorScheme.onSurfaceVariantSummary) })
                                 BasicComponent(title = resources.getString(R.string.cloud_rules), summary = date(resources, state.lastSync), onClick = { selectedPage = 1 }, endActions = { Text("›", fontSize = 24.sp, color = MiuixTheme.colorScheme.onSurfaceVariantSummary) })
                             }
                         }
@@ -411,7 +426,7 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
                         } }
                         item { Notice(resources.getString(R.string.cloud_rules_attempt_to_update_every_6)) }
                     }
-                    2 -> historyItems(resources, historyEntries, historyQuery, historyFilter,
+                    3 -> historyItems(resources, historyEntries, historyQuery, historyFilter,
                         expandedHistoryKey, historyWhitelist,
                         onQueryChange = { historyQuery = it },
                         onFilterChange = { historyFilter = it },
@@ -422,16 +437,16 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
                         },
                         onClear = { confirmClear = true },
                     )
-                    3 -> settingsItems(context, resources,
+                    4 -> settingsItems(context, resources,
                         state = state, vm = vm,
-                        onOpenTheme = { if (backStack.size == 1) backStack = backStack + 4 },
-                        onOpenDiagnostics = { if (backStack.size == 1) backStack = backStack + 6 },
-                        onOpenAbout = { if (backStack.size == 1) backStack = backStack + 5 },
+                        onOpenTheme = { if (backStack.size == 1) backStack = backStack + 5 },
+                        onOpenDiagnostics = { if (backStack.size == 1) backStack = backStack + 7 },
+                        onOpenAbout = { if (backStack.size == 1) backStack = backStack + 6 },
                         onToggleFluidCloud = ::toggleFluidCloud,
                         onToggleFocusNotification = ::toggleFocusNotification,
                         onSendLog = { showLogDialog = true },
                     )
-                    6 -> {
+                    7 -> {
                         item {
                             Card {
                                 BasicComponent(title = resources.getString(R.string.x_connection), summary = when {
@@ -463,7 +478,7 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
                         item { Notice(resources.getString(R.string.if_filtering_works_only_while_xblocker_remains)) }
                         item { Notice(resources.getString(R.string.after_changing_the_x_version_check_the)) }
                     }
-                    4 -> appearanceItems(state, vm)
+                    5 -> appearanceItems(state, vm)
                 }
             }
         }
@@ -480,32 +495,34 @@ private fun XBlockerScreen(vm: MainViewModel = viewModel()) {
             onBack = ::navigateBack,
             entryProvider = entryProvider {
                 entry(0) { pageContent(selectedPage, Modifier.fillMaxSize()) }
-                entry(4) { pageContent(4, Modifier.fillMaxSize()) }
-                entry(5) {
+                entry(5) { pageContent(5, Modifier.fillMaxSize()) }
+                entry(6) {
                     AboutScreenMiuix(
                         state = AboutUiState(context),
                         actions = AboutScreenActions(onBack = ::navigateBack, onOpenLink = { link ->
                             when (link) {
-                                "xblocker:licenses" -> if (backStack.last() == 5) backStack = backStack + 7
-                                "xblocker:privacy" -> if (backStack.last() == 5) backStack = backStack + 8
+                                "xblocker:licenses" -> if (backStack.last() == 6) backStack = backStack + 8
+                                "xblocker:privacy" -> if (backStack.last() == 6) backStack = backStack + 9
                                 else -> openUrl(link)
                             }
                         }),
                         enableBlur = options.blur,
                     )
                 }
-                entry(6) { pageContent(6, Modifier.fillMaxSize()) }
-                entry(7) { AboutDocumentScreen(privacy = false, onBack = ::navigateBack) }
-                entry(8) { AboutDocumentScreen(privacy = true, onBack = ::navigateBack) }
+                entry(7) { pageContent(7, Modifier.fillMaxSize()) }
+                entry(8) { AboutDocumentScreen(privacy = false, onBack = ::navigateBack) }
+                entry(9) { AboutDocumentScreen(privacy = true, onBack = ::navigateBack) }
             },
         )
         // Registered after NavDisplay so disabling prediction consumes the gesture
         // without seeking its transition, then performs a normal pop on completion.
         NavigationBackHandler(
             state = rememberNavigationEventState(NavigationEventInfo.None),
-            isBackEnabled = backStack.size > 1 && !usePredictiveBack &&
+            // A saved-media folder is local state, so it must own the gesture regardless of
+            // predictive back; only page pops keep the non-predictive handler.
+            isBackEnabled = ((backStack.size > 1 && !usePredictiveBack) || mediaFolder != null) &&
                 editor.isEmpty() && !preview && !showRejected && !confirmClear && !showLogDialog && availableUpdate == null,
-            onBackCompleted = ::navigateBack,
+            onBackCompleted = { if (mediaFolder != null) mediaFolder = null else navigateBack() },
         )
         // Keep overlays outside the entries: a transition must not mount each
         // dialog twice, and dismissing one must take precedence over popping a page.

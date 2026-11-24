@@ -18,16 +18,64 @@ class ModuleProvider : ContentProvider() {
         val packages = ctx.packageManager.getPackagesForUid(uid).orEmpty()
         if (uid != Process.myUid() && "com.twitter.android" !in packages) throw SecurityException("Caller not in module scope")
         val repository = Repository(ctx)
+        fun registerUser(request: Bundle, folder: String) {
+            if (folder.isEmpty()) return
+            MediaUserStore(ctx).save(folder, request.getString("userId").orEmpty(),
+                request.getString("userHandle").orEmpty(), request.getString("userName"),
+                request.getString("userAvatar"))
+        }
         return when (method) {
             "downloadMedia" -> {
                 val identity = Binder.clearCallingIdentity()
                 try {
                     val request = requireNotNull(extras)
+                    val folder = request.getString("folder")?.take(64)
+                    if (!folder.isNullOrEmpty() && !request.getString("userHandle").isNullOrEmpty()) {
+                        registerUser(request, folder)
+                    }
+                    val history = io.github.xblocker.download.MediaDownloadHistory(ctx)
+                    val batchId = folder?.takeIf { it.isNotEmpty() }?.let {
+                        history.start(it, request.getString("userName"), request.getString("userHandle"),
+                            request.getString("userAvatar"))
+                    }
                     val result = io.github.xblocker.download.MediaDownload.enqueue(ctx,
                         request.getString("url").orEmpty(), request.getString("tweetId").orEmpty(),
-                        request.getString("mediaId").orEmpty(), request.getString("type").orEmpty())
+                        request.getString("mediaId").orEmpty(), request.getString("type").orEmpty(),
+                        folder, batchId)
+                    if (batchId != null) {
+                        // A deduped "already queued" item is finished by the older batch record.
+                        if (result.queued && !result.alreadyQueued) history.setTotal(batchId, 1) else history.remove(batchId)
+                    }
                     Bundle().apply { putBoolean("queued", result.queued); putString("requestId", result.requestId); putString("message", result.message) }
                 } finally { Binder.restoreCallingIdentity(identity) }
+            }
+            "registerMediaUser" -> {
+                // Metadata for the per-user folder shown in the Media tab. Every field is re-validated by the store.
+                val request = requireNotNull(extras)
+                registerUser(request, io.github.xblocker.download.MediaDownloadPolicy.folder(request.getString("folder")))
+                Bundle.EMPTY
+            }
+            "downloadMediaBatch" -> {
+                val request = requireNotNull(extras)
+                val folder = io.github.xblocker.download.MediaDownloadPolicy.folder(request.getString("folder"))
+                val items = request.getString("items").orEmpty()
+                require(items.length <= 1_000_000) { "Media batch too large" }
+                registerUser(request, folder)
+                val history = io.github.xblocker.download.MediaDownloadHistory(ctx)
+                val batchId = history.start(folder, request.getString("userName"),
+                    request.getString("userHandle"), request.getString("userAvatar"))
+                // The provider runs under X's identity; WorkManager and the MediaStore dedupe scan
+                // must execute with this app's identity.
+                val identity = Binder.clearCallingIdentity()
+                val result = try {
+                    io.github.xblocker.download.MediaDownload.enqueueBatch(ctx, folder, items, batchId)
+                } finally { Binder.restoreCallingIdentity(identity) }
+                history.setTotal(batchId, result.queued)
+                if (result.queued == 0) history.remove(batchId)
+                Bundle().apply {
+                    putInt("queued", result.queued); putInt("rejected", result.rejected)
+                    putInt("skipped", result.skipped); putString("folder", result.folder)
+                }
             }
             "snapshot" -> Bundle().apply { putString("json", repository.snapshot()) }
             "report" -> {

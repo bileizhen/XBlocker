@@ -11,7 +11,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
-import android.os.Environment
 import android.os.SystemClock
 import android.provider.MediaStore
 import androidx.annotation.RequiresApi
@@ -41,7 +40,12 @@ class MediaDownloadWorker(context: Context, params: WorkerParameters) : Worker(c
         var connection: HttpsURLConnection? = null
         val resolver = applicationContext.contentResolver
         val started = SystemClock.elapsedRealtime()
+        var ledgerFolder = ""
+        var ledgerKey: String? = null
+        val batchId = inputData.getString("batchId")
         try {
+            val folder = MediaDownloadPolicy.folder(inputData.getString("folder"))
+            val destination = MediaDownloadPolicy.relativePath(folder)
             // A previous process may have died after inserting an unpublished row. A retry owns the same work ID.
             prefs.getString(id.toString(), null)?.let { old ->
                 val oldUri = Uri.parse(old)
@@ -49,7 +53,8 @@ class MediaDownloadWorker(context: Context, params: WorkerParameters) : Worker(c
                     // The process may also have died immediately after publishing. Preserve that completed file.
                     if (cursor.moveToFirst() && cursor.getInt(0) == 0) {
                         prefs.edit().remove(id.toString()).commit()
-                        return Result.success(workDataOf("uri" to old, "bytes" to cursor.getLong(1), "message" to "Saved to Download/X/"))
+                        MediaDownloadHistory(applicationContext).finish(batchId, success = true)
+                        return Result.success(workDataOf("uri" to old, "bytes" to cursor.getLong(1), "message" to "Saved to $destination"))
                     }
                 }
                 resolver.delete(oldUri, null, null)
@@ -59,6 +64,8 @@ class MediaDownloadWorker(context: Context, params: WorkerParameters) : Worker(c
             val kind = MediaDownloadPolicy.kind(type)
             val tweetId = MediaDownloadPolicy.validateId(inputData.getString("tweetId").orEmpty())
             val mediaId = MediaDownloadPolicy.validateId(inputData.getString("mediaId").orEmpty())
+            ledgerFolder = folder
+            ledgerKey = MediaDownloadLedger(applicationContext).key(tweetId, mediaId)
             var target = MediaDownloadPolicy.validateUrl(inputData.getString("url").orEmpty(), kind)
             var redirects = 0
             while (true) {
@@ -100,12 +107,12 @@ class MediaDownloadWorker(context: Context, params: WorkerParameters) : Worker(c
                 val values = ContentValues().apply {
                     put(MediaStore.Downloads.DISPLAY_NAME, filename)
                     put(MediaStore.Downloads.MIME_TYPE, mime)
-                    put(MediaStore.Downloads.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/X/")
+                    put(MediaStore.Downloads.RELATIVE_PATH, destination)
                     put(MediaStore.Downloads.IS_PENDING, 1)
                     put(MediaStore.Downloads.DATE_EXPIRES, System.currentTimeMillis() / 1000 + 24 * 60 * 60)
                 }
                 pending = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-                    ?: throw IOException("Could not create Download/X file")
+                    ?: throw IOException("Could not create $destination file")
                 require(prefs.edit().putString(id.toString(), pending.toString()).commit()) { "Could not record pending download" }
                 var total = count.toLong()
                 var lastProgress = 0L
@@ -123,7 +130,7 @@ class MediaDownloadWorker(context: Context, params: WorkerParameters) : Worker(c
                         if (now - lastProgress >= 1000) {
                             lastProgress = now
                             setProgressAsync(workDataOf("downloaded" to total))
-                            notifyDownload(filename, total, length)
+                            notifyDownload(filename, total, length, destination)
                         }
                     }
                     output.flush()
@@ -138,15 +145,20 @@ class MediaDownloadWorker(context: Context, params: WorkerParameters) : Worker(c
                 require(published == 1) { "Could not publish media download" }
                 pending = null
                 prefs.edit().remove(id.toString()).commit()
-                notifyDownload(filename, total, total, uri, mime)
+                notifyDownload(filename, total, total, destination, uri, mime)
+                MediaDownloadHistory(applicationContext).finish(batchId, success = true)
                 return Result.success(workDataOf("uri" to uri.toString(), "bytes" to total,
-                    "message" to "Saved to Download/X/"))
+                    "message" to "Saved to $destination"))
             }
         } catch (e: Exception) {
             clearNotification()
             if (e is CancellationException || isStopped) throw CancellationException("Media download cancelled")
             // Retry transient network errors twice. Validation failures are final.
             if (e is IOException && runAttemptCount < 2) return Result.retry()
+            // Final failure: let the next collect run try this media again.
+            ledgerKey?.let { MediaDownloadLedger(applicationContext).forget(ledgerFolder, it) }
+            MediaDownloadHistory(applicationContext).finish(batchId, success = false,
+                rateLimited = e.message?.contains("HTTP 429") == true)
             val message = (e.message ?: "Media download failed").take(200)
             notifyFailure(message)
             return Result.failure(workDataOf("message" to message))
@@ -179,14 +191,14 @@ class MediaDownloadWorker(context: Context, params: WorkerParameters) : Worker(c
         }
     }
 
-    private fun notifyDownload(filename: String, bytes: Long, length: Long, uri: Uri? = null, mime: String? = null) {
+    private fun notifyDownload(filename: String, bytes: Long, length: Long, destination: String, uri: Uri? = null, mime: String? = null) {
         if (Build.VERSION.SDK_INT >= 33 && applicationContext.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
         runCatching {
             val manager = applicationContext.getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(NotificationChannel("media_downloads", text("媒体下载", "Media downloads"), NotificationManager.IMPORTANCE_LOW))
             val builder = Notification.Builder(applicationContext, "media_downloads")
                 .setSmallIcon(if (uri == null) android.R.drawable.stat_sys_download else android.R.drawable.stat_sys_download_done)
-                .setContentTitle(text(if (uri == null) "正在下载媒体" else "已保存到 Download/X/", if (uri == null) "Downloading media" else "Saved to Download/X/"))
+                .setContentTitle(text(if (uri == null) "正在下载媒体" else "已保存到 $destination", if (uri == null) "Downloading media" else "Saved to $destination"))
                 .setContentText(filename).setOnlyAlertOnce(true).setOngoing(uri == null).setAutoCancel(uri != null)
             if (uri == null) builder.setProgress(100, if (length > 0) (bytes * 100 / length).coerceAtMost(100).toInt() else 0, length <= 0)
             else {

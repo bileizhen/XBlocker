@@ -15,7 +15,7 @@ class MediaMenuDiscoveryTest {
             else MediaMenuLocator.inspectApk(context, path)
         assertNotNull(result.report.toString(), result.targets)
         val targets = result.targets!!
-        assertTrue("No video menu: ${result.report}", targets.videoMenus.isNotEmpty())
+        assertTrue("No video menu: ${result.report}", targets.videoReady)
         assertTrue("Sheet shape missing: ${result.report}", targets.sheetReady)
         assertNotNull(targets.models.imageClass)
         assertTrue(targets.models.videoClasses.isNotEmpty())

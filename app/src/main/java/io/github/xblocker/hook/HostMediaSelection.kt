@@ -9,6 +9,56 @@ import java.util.IdentityHashMap
 internal object HostMediaSelection {
     data class Media(val url: String, val mediaId: String, val type: String, val tweetId: String)
     data class Variant(val url: String, val bitrate: Int?, val mime: String)
+    data class User(val id: String, val handle: String, val name: String?, val avatar: String?)
+
+    /**
+     * The tweet author shown in the viewer, found in the same captured state as the media.
+     * X's user model prints as ProfileUser(id=..., screenName=..., name=...).
+     */
+    fun findUser(root: Any?): User? {
+        root ?: return null
+        val seen = Collections.newSetFromMap(IdentityHashMap<Any, Boolean>())
+        var budget = 256
+        var found: User? = null
+        fun parse(value: Any): User? {
+            val text = runCatching { value.toString() }.getOrNull() ?: return null
+            if (!text.startsWith("ProfileUser(id=")) return null
+            val id = text.substringAfter("ProfileUser(id=", "").substringBefore(", screenName=", "")
+            if (!id.matches(Regex("\\d{1,32}"))) return null
+            val handle = text.substringAfter(", screenName=", "").substringBefore(", name=", "").removePrefix("@")
+            if (!handle.matches(Regex("[A-Za-z0-9_]{1,15}"))) return null
+            val name = text.substringAfter(", name=", "").substringBefore(", verifiedType=", "").takeIf { it != "null" }
+            val avatar = text.substringAfter(", profileImageUrl=", "").substringBefore(", isProtected=", "")
+                .takeIf { it.startsWith("https://pbs.twimg.com/profile_images/") && it.length <= 512 }
+            return User(id, handle, name, avatar)
+        }
+        fun visit(value: Any, depth: Int) {
+            if (found != null || depth > 5 || budget-- <= 0) return
+            if (!seen.add(value)) return
+            parse(value)?.let { found = it; return }
+            if (value is Map<*, *>) return
+            // The viewer keeps the tweet list in a collection; look at a bounded prefix.
+            if (value is Iterable<*> || value.javaClass.isArray) {
+                val items = if (value is Iterable<*>) value else (value as? Array<*>)?.asIterable()
+                items?.take(8)?.forEach { child -> if (child != null) visit(child, depth + 1) }
+                return
+            }
+            val className = value.javaClass.name
+            if (!className.startsWith("com.x.") && !className.startsWith("com.twitter.")) return
+            var type: Class<*>? = value.javaClass
+            repeat(4) {
+                val owner = type ?: return@repeat
+                for (field in owner.declaredFields) {
+                    if (Modifier.isStatic(field.modifiers) || field.type.isPrimitive) continue
+                    val child = runCatching { field.isAccessible = true; field.get(value) }.getOrNull() ?: continue
+                    visit(child, depth + 1)
+                }
+                type = owner.superclass
+            }
+        }
+        visit(root, 0)
+        return found
+    }
 
     fun highestMp4(variants: List<Variant>): Variant? = variants.filter {
         it.mime.equals("video/mp4", true) && runCatching {
@@ -30,6 +80,15 @@ internal object HostMediaSelection {
             it.substringBefore('=') in setOf("format", "name")
         } + listOf("format=$format", "name=orig")).joinToString("&")
     }
+
+    /** X's own Download Video row is gated on this model flag; null means the model does not expose it. */
+    fun isDownloadable(model: Any?, schema: MediaModelSchema): Boolean? = runCatching {
+        model ?: return null
+        val spec = specFor(model, schema.models) ?: return null
+        val values = readValues(model, spec)
+        val record = description(model, spec, values) ?: return null
+        record["isDownloadable"]?.toBooleanStrictOrNull()
+    }.getOrNull()
 
     fun fromModel(model: Any?, schema: MediaModelSchema): Media? = runCatching {
         model ?: return null

@@ -148,19 +148,62 @@ object DexKitLocator {
                 if (loaded) { nativeLoaded = true; return }
             }
         }
+        // LSPosed may hide the module package from the host's PackageManager after a reinstall.
+        // The module's own class loader still knows the APK path, and installed APKs are readable.
+        val abis = if (Process.is64Bit()) Build.SUPPORTED_64_BIT_ABIS else Build.SUPPORTED_32_BIT_ABIS
+        for (path in moduleApkPaths(context)) {
+            if (!File(path).isFile) continue
+            if (path.endsWith(".so")) {
+                if (runCatching { System.load(path) }.isSuccess) { nativeLoaded = true; return }
+                continue
+            }
+            val library = runCatching { ZipFile(path).use { zip -> abis.firstNotNullOfOrNull { abi ->
+                "lib/$abi/libdexkit.so".takeIf { zip.getEntry(it) != null }
+            } } }.getOrNull() ?: continue
+            if (runCatching { System.load("$path!/$library") }.isSuccess) { nativeLoaded = true; return }
+        }
         val module = context.packageManager.getApplicationInfo(BuildConfig.APPLICATION_ID, 0)
         val extracted = File(module.nativeLibraryDir, "libdexkit.so")
         if (extracted.isFile) {
             System.load(extracted.absolutePath)
         } else {
             // AGP's uncompressed native packaging supports direct loading from the installed APK.
-            val abis = if (Process.is64Bit()) Build.SUPPORTED_64_BIT_ABIS else Build.SUPPORTED_32_BIT_ABIS
             val library = ZipFile(module.sourceDir).use { zip -> abis.firstNotNullOfOrNull { abi ->
                 "lib/$abi/libdexkit.so".takeIf { zip.getEntry(it) != null }
             } } ?: error("DexKit ABI unavailable")
             System.load("${module.sourceDir}!/$library")
         }
         nativeLoaded = true
+    }
+
+    /** Module APK/library paths that do not depend on the host seeing our package metadata. */
+    private fun moduleApkPaths(context: Context): List<String> {
+        val paths = linkedSetOf<String>()
+        runCatching {
+            val info = context.packageManager.getApplicationInfo(BuildConfig.APPLICATION_ID, 0)
+            paths += info.sourceDir
+            paths += File(info.nativeLibraryDir, "libdexkit.so").absolutePath
+        }
+        runCatching {
+            val url = DexKitLocator::class.java.classLoader?.getResource("META-INF/xposed/module.prop")?.toString()
+                ?: return@runCatching
+            val raw = url.substringAfter("jar:file:", "").substringBefore("!/")
+            if (raw.isNotEmpty()) paths += java.net.URLDecoder.decode(raw, "UTF-8")
+        }
+        runCatching {
+            val loader = DexKitLocator::class.java.classLoader ?: return@runCatching
+            val pathList = Class.forName("dalvik.system.BaseDexClassLoader").getDeclaredField("pathList")
+                .apply { isAccessible = true }.get(loader) ?: return@runCatching
+            val elements = pathList.javaClass.getDeclaredField("dexElements").apply { isAccessible = true }
+                .get(pathList) as? Array<*> ?: return@runCatching
+            for (element in elements) {
+                if (element == null) continue
+                val path = element.javaClass.declaredFields.firstOrNull { it.name == "path" && it.type == String::class.java }
+                    ?.apply { isAccessible = true }?.get(element) as? String
+                if (path != null && path.endsWith(".apk")) paths += path
+            }
+        }
+        return paths.toList()
     }
 
     private fun report(host: PackageInfo?, mode: String, success: Int, details: String, target: String,

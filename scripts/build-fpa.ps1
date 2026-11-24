@@ -51,7 +51,8 @@ allprojects {
     $artifactDirectory = Join-Path $projectRoot 'artifacts'
     New-Item -ItemType Directory -Force -Path $artifactDirectory | Out-Null
     $apk = Join-Path $projectRoot 'build/fpa-app/outputs/apk/fpa/debug/app-fpa-debug.apk'
-    Copy-Item -LiteralPath $apk -Destination (Join-Path $artifactDirectory 'XBlocker-0.3.5-fpa.1-debug.apk') -Force
+    $versionName = (Select-String -Path (Join-Path $projectRoot 'app/build.gradle.kts') -Pattern 'versionName = "([^"]+)"').Matches[0].Groups[1].Value
+    Copy-Item -LiteralPath $apk -Destination (Join-Path $artifactDirectory "XBlocker-$versionName-fpa.1-debug.apk") -Force
 } finally {
     $env:JAVA_TOOL_OPTIONS = $previousJavaOptions
     $env:TEMP = $previousTemp

@@ -14,8 +14,8 @@ android {
         applicationId = "io.github.bileizhen.xblocker"
         minSdk = 28
         targetSdk = 36
-        versionCode = 24
-        versionName = "0.3.5"
+        versionCode = 25
+        versionName = "0.3.6"
         buildConfigField("boolean", "FPA_COMPAT", fpaCompat.toString())
         manifestPlaceholders["xposedMinVersion"] = if (fpaCompat) "82" else "93"
         manifestPlaceholders["moduleLabel"] = if (fpaCompat) "XBlocker FPA" else "@string/app_name"

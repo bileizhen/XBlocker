@@ -51,6 +51,15 @@
     <string name="settings">"Settings"</string>
     <string name="appearance">"Appearance"</string>
     <string name="diagnostics">"Diagnostics"</string>
+    <string name="media">Media</string>
+    <string name="saved_media">Saved media</string>
+    <string name="saved_media_summary">%1$d items · %2$s</string>
+    <string name="media_user_summary">@%1$s · %3$d items · %4$s</string>
+    <string name="saved_media_empty">No saved media yet. Downloads appear here grouped by user.</string>
+    <string name="saved_media_unsorted">Unsorted</string>
+    <string name="refresh">Refresh</string>
+    <string name="back">Back</string>
+    <string name="no_app_available_to_open_this_media">No app available to open this media</string>
     <string name="no_app_available_to_open_this_link">"No app available to open this link"</string>
     <string name="notification_permission_is_required_to_show_live">"Notification permission is required to show live blocking status"</string>
     <string name="file_exceeds_64_000_characters">"File exceeds 64,000 characters"</string>
@@ -340,4 +349,19 @@
     <string name="ssp_capability_missing">Unavailable</string>
     <string name="ssp_current_process">Video ads in this X process</string>
     <string name="ssp_blocked_slots">Unique ad slots removed: %1$d</string>
+    <string name="media_selected">%1$d selected</string>
+    <string name="media_share">Share</string>
+    <string name="media_delete">Delete</string>
+    <string name="media_delete_confirm">Delete %1$d selected items?</string>
+    <string name="media_delete_failed">%1$d files could not be deleted</string>
+    <string name="media_select_all">Select all</string>
+    <string name="media_select_none">Deselect all</string>
+    <string name="media_users_selected">%1$d users selected</string>
+    <string name="media_delete_users_confirm">Delete all media of %1$d selected users (%2$d items)?</string>
+    <string name="media_history">Download history</string>
+    <string name="media_history_empty">No download history yet</string>
+    <string name="media_status_success">%1$d succeeded</string>
+    <string name="media_status_limited">%1$d rate-limited</string>
+    <string name="media_status_failed">%1$d failed</string>
+    <string name="media_status_pending">%1$d in progress</string>
 </resources>
